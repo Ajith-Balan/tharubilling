@@ -44,7 +44,7 @@ const Dashboard = () => {
                 <div className="mb-3">
                   <h5>
                     <strong>Role:</strong>{" "}
-                    {auth?.user?.role === 0 ? "manager" : "Null"}
+                    {auth?.user?.role === 1 ? "manager" : "Null"}
                   </h5>
                 </div>
 

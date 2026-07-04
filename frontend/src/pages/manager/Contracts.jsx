@@ -181,9 +181,9 @@ const Contracts = () => {
                 className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm"
               >
                 <option value="All">All Statuses</option>
-                <option value="Ongoing">Ongoing</option>
-                <option value="Extended">Extended</option>
+                <option value="Active">Active</option>
                 <option value="Completed">Completed</option>
+                <option value="Closed">Closed</option>
               </select>
             </div>
 
@@ -276,7 +276,7 @@ const Contracts = () => {
                           })()}
                         </td>
 
-                           <td className="px-4 py-3 border-r font-semibold text-purple-700">{formatDate(contract.startdate) || "N/A"}</td>
+                           <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold text-purple-700">{formatDate(contract.startdate) || "N/A"}</td>
                         <td className="px-4 py-3 border-r">
                           {(() => {
                             const billAmount = matchedBills
@@ -306,14 +306,14 @@ const Contracts = () => {
                             );
                           })()}
                         </td> 
-                        <td className="px-4 py-3 border-r">{contract.extension ? formatDate(contract.extension) : "N/A"}</td>
+                        <td className="px-4 py-3  whitespace-nowrap text-center  border-r">{contract.extension ? formatDate(contract.extension) : "-"}</td>
                         <td
                           className={`px-4 py-3 text-center font-bold ${
-                            contract.status?.toLowerCase() === "ongoing"
+                            contract.status === "Active"
                               ? "bg-green-300 text-green-900"
-                              : contract.status?.toLowerCase() === "extended"
+                              : contract.status === "Completed"
                               ? "bg-blue-300 text-blue-900"
-                              : contract.status?.toLowerCase() === "completed"
+                              : contract.status === "Closed"
                               ? "bg-red-300 text-red-900"
                               : "bg-slate-200 text-slate-800"
                           }`}

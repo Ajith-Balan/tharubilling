@@ -6,7 +6,7 @@ import dotenv from 'dotenv'
 
 export async function createcontractController(req, res) {
   try {
-    const {date, railway,division,trainname, workname,nameofthework, fileno,contractNumber,extension, password, startdate, enddate, contractvalue, bg, validity } = req.body;
+    const {date, railway,division,trainname, workname,nameofthework, fileno,contractNumber,extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner } = req.body;
 
     // Validation (add additional checks if necessary)
         const exisitingContract = await contractModel.findOne({ fileno });
@@ -32,7 +32,7 @@ export async function createcontractController(req, res) {
 
     // Create the train
     const contract = await contractModel.create({
-      railway, division, trainname, workname, nameofthework, fileno: newFileno, contractNumber, extension, password, startdate, enddate, contractvalue, bg, validity
+      railway, division, trainname, workname, nameofthework, fileno: newFileno, contractNumber, extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner
     });
 
     // Send success response with the created site
@@ -81,6 +81,7 @@ export const bulkCreateContractsController = async (req, res) => {
       // Assign an incremental file number per row item context 
       const assignedFileno = `${prefix}${currentSequenceNum + index + 1}`;
 
+      
       return {
         fileno: c.fileno || c["File No"] || c["fileno"] || "",// Assigned sequentially
         railway: c.railway || c["Railway"] || "",
@@ -98,9 +99,11 @@ export const bulkCreateContractsController = async (req, res) => {
     
         bg: c.bg || c["Bank Guarantee"] || "",
         validity: c.validity || c["Validity Date"] || (c["Validity Date"]) || "",
-        status: c.status || "ongoing",
+        status: c.status || c["Status"] || "Active",
        nameofthework: c.nameofthework || c["Name of the Work"] || "",
+       remarks: c.remarks || c["Remarks"] || "",
         password: c.password || String(c["Password"] || "DefaultPass123"),
+        owner: c.owner || c["owner"] 
 
       };
     });

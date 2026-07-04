@@ -29,10 +29,6 @@ router.delete('/delete-bill/:id', deletebill)
 
 
 
-
-
-
-
 // router.delete('/delete-site/:id', deletesite)
 
 

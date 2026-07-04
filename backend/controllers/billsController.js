@@ -5,13 +5,13 @@ import billsmodel from "../models/bills.model.js";
 
 export async function createbillController(req, res) {
   try {
-    const { work, fileno, einvoicedate,billno,billfrom,billto,netamount,gst,totalamount,cheque,billpassdt,amountpssd,tds,gsttds,cc,sd,esi_pfpenalty,Linen_Loss,others,penalty,status } = req.body;
+    const {  fileno, einvoicedate,billno,billfrom,billto,netamount,gst,totalamount,cheque,billpassdt,amountpssd,tds,gsttds,cc,sd,esi_pfpenalty,Linen_Loss,electricity,building_cess,others,penalty,pg,status } = req.body;
 
     // Validation (add additional checks if necessary)
 
     // Create the train
     const bill = await billsmodel.create({
-      work, fileno, einvoicedate,billno,billfrom,billto,netamount,gst,totalamount,cheque,billpassdt,amountpssd,tds,gsttds,cc,sd,esi_pfpenalty,Linen_Loss,others,penalty,status
+       fileno, einvoicedate,billno,billfrom,billto,netamount,gst,totalamount,cheque,billpassdt,amountpssd,tds,gsttds,cc,sd,esi_pfpenalty,Linen_Loss,electricity,building_cess,others,penalty,pg,status
     });
 
     // Send success response with the created site
@@ -47,29 +47,42 @@ export const bulkCreateBillsController = async (req, res) => {
     // 2. Map and loop through inputs, incrementing our tracker index sequentially
   const sanitizedBills = bills.map((c, index) => {
       return {
-        work: c.work || c["Work Category"] || c["Work"] || "N/A",
         fileno: c.fileno || c["File No"] || c["File Number"] || "N/A",
-        einvoicedate: c.einvoicedate || c["E-Invoice Date (YYYY-MM-DD)"] || c["Date"] || "N/A",
+        einvoicedate: c.einvoicedate || c["E-Invoice Date (YYYY-MM-DD)"] || c["E Date"]  ,
 
-        billno: c.billno || c["Bill No."] || "N/A",
-        billfrom: c.billfrom || c["Bill From (YYYY-MM-DD)"] || c["From"] || "N/A",
-        billto: c.billto || c["Bill To (YYYY-MM-DD)"] || c["To "] || "N/A",
-        netamount: c.netamount || c["Net Amount"] || c["Amount"] ||  0,
-        gst: c.gst || c["GST"] || 0,
-        totalamount: c.totalamount || c["Total"] || c["Total Amount"] || 0,
-        cheque: c.cheque || c["Cheque Number"] || c["Cheque"] || "N/A",
-        billpassdt: c.billpassdt || c["Bill Pass Date (YYYY-MM-DD)"] || c["Passed Date"] || "N/A",
-        amountpssd: c.amountpssd || c["Amount Passed"] || c["Amount Passed"] || 0,
-        tds: c.tds || c["TDS"] || 0,
-        gsttds: c.gsttds || c["TDS-GST"] || 0,
-        cc: c.cc || c["CC"] || 0,
-        sd: c.sd || c["SD"] || 0,
-        esi_pfpenalty: c.esi_pfpenalty || c["ESI/PF Penalty"] || 0,
-        Linen_Loss: c.Linen_Loss || c["Linen Loss"] || 0,
-        others: c.others || c["Others"] || 0,
+        billno: c.billno || c["Bill No."] ,
+        billfrom: c.billfrom || c["Bill From (YYYY-MM-DD)"] || c["From"] ,
+        billto: c.billto || c["Bill To (YYYY-MM-DD)"] || c["To "] ,
+        netamount: c.netamount || c["Net Amount"] || c["Amount"] ,
+        epf: c.epf || c["EPF"],
+        esi: c.esi || c["ESI"],
+
+        gst: c.gst || c["GST"] ,
+        berth_charges: c.berth_charges || c["Berth Charges"],
         
-        penalty: c.penalty || c["Penalty"] || 0,
-        status: c.status || "pending", // changed to pending to match your initialState
+        totalamount: c.totalamount || c["Total"] || c["Total Amount"] ,
+        cheque: c.cheque || c["Cheque Number"] || c["Cheque"] ,
+        billpassdt: c.billpassdt || c["Bill Pass Date (YYYY-MM-DD)"] || c["Passed Date"]  ,
+        amountpssd: c.amountpssd || c["Amount Passed"] || c["Amount Passed"] ,
+        tds: c.tds || c["TDS"] ,
+        gsttds: c.gsttds || c["TDS-GST"] ,
+        sd: c.sd || c["SD"] ,
+        cc: c.cc || c["CC"] ,
+
+        esi_pfpenalty: c.esi_pfpenalty || c["ESI/PF Penalty"],
+        Linen_Loss: c.Linen_Loss || c["Linen Loss"] ,
+        others: c.others || c["Others"] ,
+        
+        penalty: c.penalty || c["Penalty"] ,
+        pg: c.pg || c["PG"],
+        postage: c.postage || c["Postage"],
+        welfare_cess: c.welfare_cess || c["welfare cess"],
+        water_cess_charge: c.water_cess_charge || c["Water & cess charge"],
+        electricity: c.electricity || c["Electricity"],
+        building_cess: c.building_cess || c["Building Cess"],
+        overpayment: c.overpayment || c["Over Payment"],
+
+        status: c.status || c["Status"], // changed to pending to match your initialState
       };
     });
 
@@ -237,3 +250,4 @@ export const searchbillController = async (req, res) => {
 //   }
 // }
 
+// ID CARD

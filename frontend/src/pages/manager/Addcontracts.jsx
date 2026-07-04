@@ -53,8 +53,9 @@ const Addcontracts = () => {
         "Contract Value": 4500000,
         "Bank Guarantee": "BG123:50000,BG124:25000",
         "Validity Date": "2029-08-31",
-        "Status": "ongoing",
+        "Status": "Active",
         "Name of the Work": "Deep Cleaning Contract for Express Trains",
+        "Remarks": "",
         "Password": "SecurePass789",
 
       }

@@ -26,6 +26,7 @@ import Managerlogin from './pages/Auth/Managerlogin';
 import Contracts from './pages/manager/Contracts';
 import BillHistory from './pages/manager/BillHistory';
 import EditContract from './pages/manager/EditContract';
+import Profitability from './pages/manager/ProfitabilityPage';
 
 function App() {
   return (
@@ -64,19 +65,13 @@ function App() {
          <Route path='manager/contracts' element={<Contracts />} />
         <Route path='manager/billdetails' element={<BillHistory />} />
        <Route path='manager/editcon/:id' element={<EditContract />} />
+       <Route path='manager/profitability' element={<Profitability />} />
+
+         
+
+
 
         
-
-
-
-
-
-
-
-
-
-
-
 
 
 

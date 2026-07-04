@@ -70,7 +70,11 @@ const ManagerMenu = () => {
 
   
     { to: "/dashboard/manager/createcontracts", label: "Create Contract", icon: <FaUserTie /> },
-     { to: "/dashboard/manager/billdetails", label: "Bill History", icon: <FaFileInvoiceDollar /> },
+     { to: "/dashboard/manager/billdetails", label: "All Bills", icon: <FaFileInvoiceDollar /> },
+     { to: "/dashboard/manager/addbills", label: "Add Bill", icon: <FaFileInvoiceDollar /> },
+
+     
+
   ];
 
   return (

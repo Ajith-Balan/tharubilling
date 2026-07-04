@@ -2,9 +2,7 @@ import mongoose from "mongoose";
 
 const billsSchema = new mongoose.Schema(
   {
-    work: {
-      type: String,
-    },
+ 
 
     fileno: {
       type: String,
@@ -24,13 +22,25 @@ type:String
     },
  
     netamount: {
-      type: Number,
+      type: String,
     },
-  gst:{
-type: Number,  },
+    epf: {
+      type:String
+    },
+      esi: {
+      type:String
+    },
+    
 
+  gst:{
+type: String,  },
+
+    berth_charges:{
+    type:String
+  }, 
+  
     totalamount:{
-    type:Number
+    type:String
   }, 
    cheque:{
     type:String
@@ -41,40 +51,66 @@ billpassdt: {
     },
  
       amountpssd:{
-    type:Number
+    type:String
   }, 
   tds:{
-    type:Number
+    type:String
   },
   gsttds:{
-    type:Number
+    type:String
   },
 
   cc:{
-    type:Number
+    type:String
   },
  sd:{
-type:Number
+type:String
  },
 
  esi_pfpenalty:{
-    type:Number
+    type:String
  },
     penalty: {
-      type: Number,
+      type: String,
+    },
+    pg:{
+      type:String
     },
     Linen_Loss:{
-      type:Number
+      type:String
     },
 
     others:{
-type:Number
+type:String
     },
 
+    cc_postage:{
+type:String
+    },
+
+      postage:{
+type:String
+    }, 
+    
+    water_cess_charges:{
+type:String
+    },  
+      welfare_cess:{
+type:String
+    },  
+    electricity:{
+type:String
+    },
+building_cess:{
+type:String
+},
+    overpayment:{
+type:String
+    },
     status: {
       type: String,
-      default: "pending",
     },
+
   },
   { timestamps: true }
 );

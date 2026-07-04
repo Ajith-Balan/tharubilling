@@ -19,6 +19,9 @@ const Addbill = () => {
     totalamount: "",
     netamount: "",
     amountpssd: "",
+    epf: "",
+    esi: "",
+    berth_charges: "",
     tds: "",
     gsttds: "",
     cc: "",
@@ -27,9 +30,13 @@ const Addbill = () => {
     Linen_Loss: "",
     others: "",
     penalty: "",
+    postage: "",
+    welfare_cess: "",
+    water_cess_charge: "",
+    overpayment: "",
     cheque: "",
     billpassdt: "",
-    status: "pending",
+    status: "",
   };
 
   const [contract, setContract] = useState([]);
@@ -92,15 +99,18 @@ const Addbill = () => {
       // Sample structured data array acting as columns headers + example data row
       const templateData = [
         {
-           "Work Category": "Electrical Maintenance",
 
           "File No": "FILENO123",
-          "Date": "2026-06-23",
+          "E Date": "2026-06-23",
            "Bill No.": "BILL-001",
           "From": "2026-05-01",
           "To ": "2026-05-31",
           "Amount": 10000,
+          "EPF": 0,
+          "ESI": 0,
           "GST": 1800,
+           "Berth Charges": 0,
+
           "Total": 11800,
           "Cheque": "CHQ98765",
           "Passed Date": "2026-06-25",
@@ -112,8 +122,16 @@ const Addbill = () => {
           "CC": 800,
           "ESI/PF Penalty" :600,
           "Penalty": 400,
+          "PG":100,
           "Linen Loss": 622,
-          "Others": 300
+          "Others": 300,
+          "Postage": 0,
+          "welfare cess": 0,
+          "Water & cess charge": 0,
+          "Electricity": 0,
+          "Building Cess": 100,
+          "Over Payment": 0,
+          "Status": "",
         }
       ];
 

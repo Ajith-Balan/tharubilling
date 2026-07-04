@@ -5,7 +5,7 @@ const contractschema = new mongoose.Schema(
     date:{
       type:String
     },
-    
+
     railway: {
       type: String,
     },
@@ -24,7 +24,6 @@ const contractschema = new mongoose.Schema(
     },
     fileno: {
       type: String,
-      required: true, 
     },
     contractNumber: {
       type: String,
@@ -54,12 +53,16 @@ const contractschema = new mongoose.Schema(
      validity:{
 type:String
     },
-
+owner:{
+type:String
+},
      
  
     status: {
       type: String,
-      default: "ongoing",
+    },
+    remarks:{
+      type:String
     },
 
     role: {
