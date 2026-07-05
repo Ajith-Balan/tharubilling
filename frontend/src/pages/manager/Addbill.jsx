@@ -9,7 +9,6 @@ import * as XLSX from "xlsx";
 const Addbill = () => {
   const [auth] = useAuth();
   const initialState = {
-    work: "",
     fileno: "",
     einvoicedate: "",
     billno: "",
@@ -278,7 +277,7 @@ const handleBulkUploadSubmit = async (e) => {
                     />
                   </div>
 
-                  <div className="mb-6">
+                  {/* <div className="mb-6">
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Work Category</label>
                     <select
                       name="work"
@@ -296,7 +295,7 @@ const handleBulkUploadSubmit = async (e) => {
                           </option>
                         ))}
                     </select>
-                  </div>
+                  </div> */}
 
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
                     <div>

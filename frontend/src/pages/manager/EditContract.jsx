@@ -280,9 +280,9 @@ const [showPassword, setShowPassword] = useState(false);
               <div>
                   <label className={labelClass}>Status</label>
                   <select name="status" value={formData.status} onChange={handleChange} className={inputClass}>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="not-started">Not started</option>
-                    <option value="completed">Closed</option>
+                    <option value="Active">Active</option>
+                    <option value="Closed">Closed</option>
+                    <option value="completed">Completed</option>
                     <option value="extended">Extended</option>
                   </select>
               </div>

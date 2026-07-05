@@ -102,7 +102,7 @@ const ManagerMenu = () => {
         ${menuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <h2 className="text-2xl font-bold text-red-600 mb-6 border-b pb-2 md:block hidden">
-          Quick Links
+         
         </h2>
 
         <nav className="space-y-3 mt-4">

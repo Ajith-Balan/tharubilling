@@ -29,21 +29,27 @@ const Contracts = () => {
     return new Date(date).toLocaleDateString("en-GB").replace(/\//g, "-");
   };
 
-  // Fetch contracts from API
-  const fetchContracts = async () => {
-    try {
-       setLoading(true);
-      const res = await axios.get(
-        `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`
-      );
-      setContracts(res.data.contracts || []);
-    } catch (err) {
-      console.error("Error fetching contracts:", err);
-      toast.error("Failed to load contracts");
-    }finally {
-      setLoading(false);
-    }
-  };
+// Fetch contracts from API
+const fetchContracts = async () => {
+  try {
+    setLoading(true);
+
+    const res = await axios.get(
+      `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`
+    );
+
+    const sortedContracts = (res.data.contracts || []).sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    setContracts(sortedContracts);
+  } catch (err) {
+    console.error("Error fetching contracts:", err);
+    toast.error("Failed to load contracts");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch bills from API
   const fetchBills = async () => {
@@ -205,7 +211,7 @@ const Contracts = () => {
 
           {/* Table Header Section */}
           <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-700">Active Contracts</h2>
+            {/* <h2 className="text-xl font-bold text-gray-700">Active Contracts</h2> */}
             <span className="text-sm text-gray-500">
               Showing {sortedContracts.length > 0 ? indexOfFirstItem + 1 : 0}-
               {Math.min(indexOfLastItem, sortedContracts.length)} of {sortedContracts.length}

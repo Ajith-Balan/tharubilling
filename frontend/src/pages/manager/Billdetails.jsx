@@ -148,8 +148,8 @@ const Billdetails = () => {
       ? getContractPeriod(contract.startdate, contract.enddate)
       : 0;
 
-  const pendingBills = filteredBills.filter((bill) => bill.status !== "Bill Passed");
-  const passedBills = filteredBills.filter((bill) => bill.status === "Bill Passed");
+  const pendingBills = filteredBills.filter((bill) => bill.status == "PENDING");
+  const passedBills = filteredBills.filter((bill) => bill.status === "PASSED");
 
   const lastPassedMonth =
     passedBills.length > 0
@@ -494,14 +494,14 @@ const Billdetails = () => {
                             {isEditing ? (
                               <select name="status" value={editedData.status || ""} onChange={handleInputChange} className="border border-slate-300 rounded text-xs px-1 py-0.5 bg-white focus:ring-1 focus:ring-blue-500 outline-none">
                                 <option value="">-- Select --</option>
-                                <option value="Processing">Processing</option>
+                                <option value="PENDING">PENDING</option>
                                 <option value="Passed to Division">Passed to Division</option>
                                 <option value="Accounts">Accounts</option>
-                                <option value="Bill Passed">Bill Passed</option>
+                                <option value="PASSED">Bill Passed</option>
                               </select>
                             ) : (
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "Bill Passed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
-                                {bill.status || "Processing"}
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+                                {bill.status || "PENDING"}
                               </span>
                             )}
                           </td>

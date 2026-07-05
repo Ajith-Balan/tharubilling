@@ -27,32 +27,40 @@ const BillHistory = () => {
   // Pagination Configuration
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
+const loadData = async () => {
+  try {
+    setLoading(true);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [billsRes, contractsRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/getbills`),
-        axios.get(`${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`)
-      ]);
+    const [billsRes, contractsRes] = await Promise.all([
+      axios.get(`${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/getbills`),
+      axios.get(`${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`)
+    ]);
 
-      setBills(billsRes.data.bills || []);
+    // Latest bills first
+    const sortedBills = (billsRes.data.bills || []).sort();
+    setBills(sortedBills);
 
-      const data = contractsRes.data.contracts || contractsRes.data || [];
-      const mappedContracts = {};
-      if (Array.isArray(data)) {
-        data.forEach((c) => {
-          if (c.fileno) mappedContracts[c.fileno] = c;
-        });
+    // Latest contracts first
+    const contracts = (contractsRes.data.contracts || contractsRes.data || []).sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    const mappedContracts = {};
+    contracts.forEach((c) => {
+      if (c.fileno) {
+        mappedContracts[c.fileno] = c;
       }
-      setContractsMap(mappedContracts);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
+
+    setContractsMap(mappedContracts);
+
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to load data");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     if (auth?.user) {
@@ -114,6 +122,16 @@ const BillHistory = () => {
         return status.toLowerCase() === statusFilter.toLowerCase();
       });
     }
+
+    // E-Invoice Pending PSSD Filter
+if (statusFilter === "E-Invoice_Pending") {
+  result = result.filter((bill) => {
+    return (
+      bill.einvoicedate &&
+      (!bill.amountpssd || bill.amountpssd === "")
+    );
+  });
+}
 
     // New Custom E-Invoice Date Range Filter Logic
     if (startDate) {
@@ -267,6 +285,7 @@ const BillHistory = () => {
                     >
                       <option value="All">All Statuses</option>
                       <option value="PASSED">Bill Passed</option>
+                      <option value="E-Invoice_Pending">E-Invoice Pending</option>
                       <option value="PENDING">Pending</option>
                     </select>
                   </div>
