@@ -1,67 +1,146 @@
 import React from 'react'
 import Layout from '../components/layout/Layout'
+
 const policy = () => {
   return (
-    <div>
-      <Layout title={'privacy policy'}>
-      <div className="privacy-policy p-4">
-      <h1 className="text-2xl font-bold mb-4">Privacy Policy</h1>
-      <p><strong>Effective Date:</strong> [Insert Date]</p>
+    <Layout title={'Privacy Policy - Tharu and Sons'}>
+      <div className="bg-[#fcfcfc] min-h-screen py-16 px-4 sm:px-6 lg:px-8 antialiased font-sans text-[#222222]">
+        <div className="max-w-5xl mx-auto">
+          
+          {/* Main Title Section - Styled like Tharu & Sons Headers */}
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="text-[11px] uppercase tracking-[0.25em] text-[#b3925a] font-medium block mb-3">
+              Legal & Compliance
+            </span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-light tracking-wide uppercase text-[#111111] mb-6">
+              Privacy Policy
+            </h1>
+            <div className="w-16 h-[1px] bg-[#b3925a] mx-auto mb-6"></div>
+            <p className="text-xs uppercase tracking-widest text-neutral-400">
+              Effective Date: 10-12-2026
+            </p>
+          </div>
 
-      <p className="mb-4">
-        [CJ ATTIRE]  is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website [website URL] or use our services. Please read this policy carefully to understand our practices regarding your personal data.
-      </p>
+          {/* Intro Section */}
+          <div className="max-w-3xl mx-auto mb-16 text-center border-b border-neutral-100 pb-12">
+            <p className="text-base sm:text-lg text-neutral-600 font-light leading-relaxed">
+              <strong className="text-[#111111] font-medium">[Tharu and Sons]</strong> is fully committed to safeguarding your privacy. This policy details how we collect, handle, and securely manage your information when you interact with our boutique platform at <span className="text-[#111111] underline underline-offset-4 font-normal">[website URL]</span> or utilize our premium bespoke services.
+            </p>
+          </div>
 
-      <h2 className="text-xl font-semibold mt-6 mb-2">1. Information We Collect</h2>
-      <p>We collect information about you in various ways:</p>
-      <ul className="list-disc ml-6 mb-4">
-        <li>
-          <strong>Personal Data</strong>: When you register on our site, place an order, subscribe to our newsletter, or interact with us, we may collect personal information such as your name, email address, phone number, and billing information.
-        </li>
-        <li>
-          <strong>Usage Data</strong>: We collect information on how you access and interact with our website, including your IP address, browser type, and pages visited.
-        </li>
-        <li>
-          <strong>Cookies and Tracking Technologies</strong>: We use cookies and similar tracking technologies to enhance user experience and analyze how our services are used.
-        </li>
-      </ul>
+          {/* Legal Sections Grid Layout */}
+          <div className="space-y-16 max-w-4xl mx-auto">
+            
+            {/* 01. Information We Collect */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+              <div className="md:col-span-4">
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#b3925a] block mb-1">01</span>
+                <h2 className="text-lg uppercase tracking-wider font-medium text-[#111111]">Information We Collect</h2>
+              </div>
+              <div className="md:col-span-8 text-neutral-600 font-light leading-relaxed border-l border-neutral-200 pl-6 space-y-6">
+                <p>We compile necessary information about your interactions through various touchpoints:</p>
+                <div className="space-y-4">
+                  <p>
+                    <strong className="text-[#111111] block font-medium text-xs tracking-wider uppercase mb-1">Personal Profile Data</strong> 
+                    When you register a custom profile, secure an order, or subscribe, we securely host credentials including your name, physical measurements, email addresses, contact details, and precise billing entries.
+                  </p>
+                  <p>
+                    <strong className="text-[#111111] block font-medium text-xs tracking-wider uppercase mb-1">Digital Usage Metrics</strong> 
+                    We log how you interface with our lookbooks and platforms, detailing your IP address configurations, browser distributions, and sequential page engagement histories.
+                  </p>
+                  <p>
+                    <strong className="text-[#111111] block font-medium text-xs tracking-wider uppercase mb-1">Cookies & Architecture Tracking</strong> 
+                    We utilize cookies and tracking configurations to polish navigation fluidities and extract performance metrics.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-      <h2 className="text-xl font-semibold mt-6 mb-2">2. How We Use Your Information</h2>
-      <p>We use your personal information to:</p>
-      <ul className="list-disc ml-6 mb-4">
-        <li>Provide and maintain our services.</li>
-        <li>Process your transactions.</li>
-        <li>Communicate with you about updates, offers, or changes to our services.</li>
-        <li>Improve our website and tailor your experience.</li>
-        <li>Analyze and understand how users interact with our services.</li>
-      </ul>
+            {/* 02. How We Use It */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+              <div className="md:col-span-4">
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#b3925a] block mb-1">02</span>
+                <h2 className="text-lg uppercase tracking-wider font-medium text-[#111111]">Purpose of Processing</h2>
+              </div>
+              <div className="md:col-span-8 text-neutral-600 font-light leading-relaxed border-l border-neutral-200 pl-6">
+                <p className="mb-4">Collected information serves strictly to execute and improve operations:</p>
+                <ul className="space-y-3 list-none pl-0">
+                  {['Provide, calibrate, and protect our custom tailoring offerings.', 'Complete and ship transactional placements safely.', 'Dispatch direct operational alerts or customized luxury recommendations.', 'Iterate our presentation layouts based on real user interactions.'].map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <span className="text-[#b3925a] mt-2 text-[8px]">■</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
-      <h2 className="text-xl font-semibold mt-6 mb-2">3. Sharing Your Information</h2>
-      <p>We do not share your personal information with third parties except:</p>
-      <ul className="list-disc ml-6 mb-4">
-        <li>With your consent.</li>
-        <li>With service providers that help us operate our website, such as payment processors or email service providers.</li>
-        <li>If required by law or to protect our rights and safety.</li>
-      </ul>
+            {/* 03. Sharing Your Information */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+              <div className="md:col-span-4">
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#b3925a] block mb-1">03</span>
+                <h2 className="text-lg uppercase tracking-wider font-medium text-[#111111]">Data Transmission</h2>
+              </div>
+              <div className="md:col-span-8 text-neutral-600 font-light leading-relaxed border-l border-neutral-200 pl-6">
+                <p className="mb-4">We maintain strict confidentiality protocols and never distribute your credentials except:</p>
+                <ul className="space-y-3 list-none pl-0">
+                  {['With your explicitly logged authorization.', 'To specialized core operators supporting our delivery network and secure tokenized checkouts.', 'To satisfy regulatory parameters or defend intellectual safety provisions.'].map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <span className="text-[#b3925a] mt-2 text-[8px]">■</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
-      <h2 className="text-xl font-semibold mt-6 mb-2">4. Security of Your Information</h2>
-      <p className="mb-4">
-        We use administrative, technical, and physical security measures to protect your personal information. However, please be aware that no method of transmission over the internet is 100% secure.
-      </p>
+            {/* 04. Data Security */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+              <div className="md:col-span-4">
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#b3925a] block mb-1">04</span>
+                <h2 className="text-lg uppercase tracking-wider font-medium text-[#111111]">Secured Protection</h2>
+              </div>
+              <div className="md:col-span-8 text-neutral-600 font-light leading-relaxed border-l border-neutral-200 pl-6">
+                <p>
+                  We leverage physical, cloud, and engineering frameworks to shield private identities. Note, however, that open digital interfaces cannot be guaranteed to be absolutely secure against unauthorized breaches.
+                </p>
+              </div>
+            </div>
 
-      <h2 className="text-xl font-semibold mt-6 mb-2">5. Your Data Protection Rights</h2>
-      <p className="mb-4">
-        Depending on your jurisdiction, you may have certain rights regarding your personal data, including the right to access, correct, or delete the information we hold about you.
-      </p>
+            {/* 05. Your Rights */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+              <div className="md:col-span-4">
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#b3925a] block mb-1">05</span>
+                <h2 className="text-lg uppercase tracking-wider font-medium text-[#111111]">Statutory Control</h2>
+              </div>
+              <div className="md:col-span-8 text-neutral-600 font-light leading-relaxed border-l border-neutral-200 pl-6">
+                <p>
+                  Depending on geographical parameters, you maintain concrete permissions to inquire, update, restrict, or wipe your recorded measurements and identities from our secure registries.
+                </p>
+              </div>
+            </div>
 
-      <h2 className="text-xl font-semibold mt-6 mb-2">6. Changes to This Privacy Policy</h2>
-      <p className="mb-4">
-        We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page. We encourage you to review this policy periodically.
-      </p>
+            {/* 06. Policy Updates */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+              <div className="md:col-span-4">
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#b3925a] block mb-1">06</span>
+                <h2 className="text-lg uppercase tracking-wider font-medium text-[#111111]">Policy Revisions</h2>
+              </div>
+              <div className="md:col-span-8 text-neutral-600 font-light leading-relaxed border-l border-neutral-200 pl-6">
+                <p>
+                  We reserve the right to modify these privacy criteria. Updates will be visibly logged directly onto this platform with corresponding chronology adjustments.
+                </p>
+              </div>
+            </div>
 
-    </div>     
-     </Layout>
-    </div>
+          </div>
+
+          {/* Footer Accent Decoration */}
+          <div className="w-12 h-[1px] bg-neutral-200 mx-auto mt-24"></div>
+          
+        </div>
+      </div> 
+    </Layout>
   )
 }
 

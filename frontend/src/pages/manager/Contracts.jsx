@@ -233,6 +233,7 @@ const fetchContracts = async () => {
                       
                       <th className="px-4 py-3 text-left font-semibold border-r">Division</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Name of Work</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Manager</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Number</th>
 
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Value</th>
@@ -240,7 +241,7 @@ const fetchContracts = async () => {
                      <th className="px-4 py-3 text-left font-semibold border-r">Started On</th>
 
                       <th className="px-4 py-3 text-left font-semibold border-r">Validity / End Date</th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">Extension Date</th>
+                      {/* <th className="px-4 py-3 text-left font-semibold border-r">Extension Date</th> */}
                       <th className="px-4 py-3 text-left font-semibold text-center">Status</th>
                     </tr>
                   </thead>
@@ -255,13 +256,31 @@ const fetchContracts = async () => {
                      
                         <td className="px-4 py-3 font-medium border-r">{contract.division || "N/A"}</td>
                         <td className="px-4 py-3 border-r capitalize">{contract.workname || "N/A"}</td>
+                        <td className="px-4 py-3 border-r capitalize">{contract.managername || "N/A"}</td>
+                        
                         <td className="px-4 py-3 border-r">{contract.contractNumber || "N/A"}</td>
+                       
+
                         <td className="px-4 py-3 border-r">₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}</td>
+ {/* <td className="px-4 py-3 border-r text-sm">
+  <div className="space-y-1">
+    <div className="flex items-center gap-2 text-gray-900 dark:text-gray-700 font-medium">
+      <svg className="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+      {contract.managername || "N/A"}
+    </div>
+    {contract.managerphone && (
+      <div className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-900">
+        <svg className="w-3.5 h-3.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.72.59.59 0 00.74.24l.85-.17a1 1 0 011.03.11l1.25.83a1 1 0 01.42.82V10a3 3 0 01-3 3h-1c-1.104 0-2-.896-2-2V7H5a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-3.5a1 1 0 01.42-.82l1.25-.83a1 1 0 011.03-.11l.85.17a.59.59 0 00.74-.24l.3-.6c.214-.43.5-.81.85-1.12V19a2 2 0 01-2 2h-3.28a1 1 0 01-.94-.72l-.3-.9a1 1 0 00-.74-.72l-1.01-.25a1 1 0 00-1.03.11l-.8.53a1 1 0 01-1.03.11l-3.2-.8a1 1 0 01-.72-.94V5z" /></svg>
+        {contract.managerphone}
+      </div>
+    )}
+  </div>
+</td> */}
                         <td className="px-2 py-2 border-r">
                           {(() => {
                             const contractValue = Number(contract.contractvalue || 0);
-                            const bill = matchedBills.find((b) => b.fileno === contract.fileno);
-                            const penalty = Number(bill?.penalty || 0);
+                            const bills = matchedBills.filter((b) => b.fileno === contract.fileno);
+                            const penalty = bills.reduce((sum, bill) => sum + Number(bill.penalty || 0), 0);
                             const maxPenalty = contractValue * 0.1;
                             const percentage = contractValue > 0 ? ((penalty / contractValue) * 100).toFixed(1) : 0;
                             const isHighPenalty = Number(percentage) > 4;
@@ -312,7 +331,7 @@ const fetchContracts = async () => {
                             );
                           })()}
                         </td> 
-                        <td className="px-4 py-3  whitespace-nowrap text-center  border-r">{contract.extension ? formatDate(contract.extension) : "-"}</td>
+                        {/* <td className="px-4 py-3  whitespace-nowrap text-center  border-r">{contract.extension ? formatDate(contract.extension) : "-"}</td> */}
                         <td
                           className={`px-4 py-3 text-center font-bold ${
                             contract.status === "Active"

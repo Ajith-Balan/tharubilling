@@ -20,18 +20,15 @@ const Billdetails = () => {
   // All keys structured to strictly match backend payload properties
   const dynamicKeys = [
     { key: "gst", label: "GST", isNumeric: true },
-    { key: "totalamount", label: "Amount", isNumeric: true },
-    { key: "netamount", label: "Net Received", isNumeric: true },
+    { key: "netamount", label: "Net Amount", isNumeric: true },
+    { key: "totalamount", label: "Total Amount", isNumeric: true },
     { key: "amountpssd", label: "Amount Passed", isNumeric: true },
     { key: "tds", label: "TDS", isNumeric: true },
     { key: "gsttds", label: "GST-TDS", isNumeric: true },
-    { key: "cc", label: "CC", isNumeric: true },
-    { key: "sd", label: "SD", isNumeric: true },
     { key: "esi_pfpenalty", label: "ESI/PF Penalty", isNumeric: true },
     { key: "Linen_Loss", label: "Linen Loss", isNumeric: true },
     { key: "others", label: "Others", isNumeric: true },
     { key: "penalty", label: "Penalty", isNumeric: true },
-    { key: "cheque", label: "Cheque/Ref", isNumeric: false },
   ];
 
   const fetchBills = async () => {
@@ -39,8 +36,9 @@ const Billdetails = () => {
       const res = await axios.get(
         `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/getcontractbills/${fileno}`
       );
+      // Sorts latest bills first using invoice date or period start date fallbacks
       const sortedBills = (res.data.bills || []).sort(
-        (a, b) => new Date(b.month + "-01") - new Date(a.month + "-01")
+        (a, b) => new Date(b.einvoicedate || b.billfrom || b.month + "-01") - new Date(a.einvoicedate || a.billfrom || a.month + "-01")
       );
       setBills(sortedBills);
     } catch (err) {
@@ -92,8 +90,6 @@ const Billdetails = () => {
     const baseEdits = {
       einvoicedate: bill.einvoicedate ? bill.einvoicedate.split('T')[0] : "",
       billno: bill.billno || "",
-      fileno: bill.fileno || "",
-      work: bill.work || "",
       billfrom: bill.billfrom ? bill.billfrom.split('T')[0] : "",
       billto: bill.billto ? bill.billto.split('T')[0] : "",
       billpassdt: bill.billpassdt ? bill.billpassdt.split('T')[0] : "",
@@ -133,7 +129,7 @@ const Billdetails = () => {
   const filteredBills = bills;
 
   const totalBillValue = filteredBills.reduce((sum, b) => sum + (Number(b.totalamount) || 0), 0);
-  const totalNetAmount = filteredBills.reduce((sum, b) => sum + (Number(b.netamount) || 0), 0);
+  const totalNetAmount = filteredBills.reduce((sum, b) => sum + (Number(b.amountpssd) || 0), 0);
   const totalPenalty = filteredBills.reduce((sum, b) => sum + (Number(b.penalty) || 0), 0);
 
   const getContractPeriod = (startDate, endDate) => {
@@ -150,9 +146,13 @@ const Billdetails = () => {
 
   const pendingBills = filteredBills.filter((bill) => bill.status == "PENDING");
   const passedBills = filteredBills.filter((bill) => bill.status === "PASSED");
+// Counts how many bills have an empty or missing einvoicedate property
+  const emptyEInvoiceCount = filteredBills.filter((bill) => !bill.einvoicedate).length;
 
   const lastPassedMonth =
-    passedBills.length > 0
+    emptyEInvoiceCount > 0
+      ? `${emptyEInvoiceCount} bill${emptyEInvoiceCount > 1 ? "s" : ""} not ready for taking E-Invoice`
+      : passedBills.length > 0
       ? new Date(passedBills[passedBills.length - 1].billfrom).toLocaleString("default", {
           month: "long",
           year: "numeric",
@@ -179,37 +179,48 @@ const Billdetails = () => {
           
           {/* ====== PREMIUM BRANDED HEADER ====== */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 mb-4">
-              <div>
-                  <h1 className="text-xl  p-2 rounded shadow text-black font-bold tracking-tight text-slate-900 uppercase">
-                 Status:  <span className="font-semibold p-1"> {contract.status || "_" } </span>
-                </h1>
-                <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">
-                  <span className="font-semibold"> File No: </span> {contract.fileno || "File No. Not Available"}
-                </h1>
-               
-                <h2 className="text-lg font-bold text-red-600 tracking-wide mt-0.5 uppercase">
-                  {contract.workname || "Contract Name Not Available"}
-                </h2>
-                <p className="text-xs text-slate-500 font-medium max-w-4xl mt-1 leading-relaxed">
-                  <span className="font-semibold text-slate-700">Name of the Work:</span> {contract.nameofthework}
-                </p>
-              </div>
-              <div className="mt-4 md:mt-0 flex gap-2">
-                <Link
-                  to="/dashboard/manager/addbills"
-                  className="inline-flex items-center gap-2 bg-emerald-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow-sm hover:bg-emerald-700 transition-all duration-150"
-                >
-                  <FaPlus size={14} /> Add New Bill Entry
-                </Link>
-                <Link
-                  to={`/dashboard/manager/editcon/${contract._id}`}
-                  className="inline-flex items-center gap-2 bg-slate-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow-sm hover:bg-slate-700 transition-all duration-150"
-                >
-                  <FaEdit size={14} /> Edit Contract
-                </Link>
-              </div>
-            </div>
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-slate-200 pb-6 mb-6">
+  {/* Left Content Column */}
+  <div className="space-y-2 max-w-4xl">
+    <div className="flex flex-wrap items-center gap-3">
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        File No: <span className="font-medium text-slate-600">{contract.fileno || "Not Available"}</span>
+      </h1>
+      
+      {/* Dynamic Status Badge */}
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold uppercase bg-slate-100 text-slate-800 border border-slate-200">
+        Status: {contract.status || "—"}
+      </span>
+    </div>
+
+    <h2 className="text-lg font-semibold text-rose-600 tracking-wide uppercase">
+      {contract.workname || "Contract Name Not Available"}
+    </h2>
+
+    <p className="text-sm text-slate-600 leading-relaxed">
+      <span className="font-semibold text-slate-900">Name of the Work:</span> {contract.nameofthework || "—"}
+    </p>
+  </div>
+
+  {/* Right Actions Column */}
+  <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
+    <Link
+      to="/dashboard/manager/addbills"
+      className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-150"
+    >
+      <FaPlus size={14} /> 
+      <span>Add New Bill Entry</span>
+    </Link>
+    
+    <Link
+      to={`/dashboard/manager/editcon/${contract._id}`}
+      className="inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm px-4 py-2.5 rounded-lg border border-slate-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors duration-150"
+    >
+      <FaEdit size={14} className="text-slate-500" /> 
+      <span>Edit Contract</span>
+    </Link>
+  </div>
+</div>
 
             {/* ====== METADATA LEDGER GRID ====== */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-700">
@@ -359,10 +370,20 @@ const Billdetails = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">Last Passed Bill Month</span>
-              <span className="text-sm font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-full">{lastPassedMonth}</span>
-            </div>
+           <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+  <span className="text-sm font-medium text-slate-500">
+    {emptyEInvoiceCount > 0 ? "E-Invoice Status Warning" : "Last Passed Bill Month"}
+  </span>
+  <span
+    className={`text-sm font-bold px-3 py-1 rounded-full ${
+      emptyEInvoiceCount > 0
+        ? "bg-amber-50 text-amber-700 border border-amber-200"
+        : "text-slate-800 bg-slate-100"
+    }`}
+  >
+    {lastPassedMonth}
+  </span>
+</div>
             <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
               <span className="text-sm font-medium text-slate-500">Pending Operations Checklist</span>
               <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">{pendingBills.length} Bills Awaiting Approval</span>
@@ -383,8 +404,6 @@ const Billdetails = () => {
                     <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
                       <th rowSpan="2" className="px-3 py-3 border-r border-slate-200 text-center font-bold">Date</th>
                       <th rowSpan="2" className="px-3 py-3 border-r border-slate-200 text-center font-bold">Bill No.</th>
-                      <th rowSpan="2" className="px-3 py-3 border-r border-slate-200 text-center font-bold">File No.</th>
-                      <th rowSpan="2" className="px-3 py-3 border-r border-slate-200 text-left font-bold">Work Description</th>
                       <th colSpan="2" className="px-3 py-1.5 border-r border-slate-200 text-center font-bold tracking-wider uppercase bg-slate-100">Period</th>
                       <th colSpan={dynamicKeys.length} className="px-3 py-1.5 border-r border-slate-200 text-center font-bold tracking-wider uppercase bg-slate-50 text-slate-600">
                         Collection Ledger Breakup
@@ -424,24 +443,6 @@ const Billdetails = () => {
                               <input type="text" name="billno" value={editedData.billno || ""} onChange={handleInputChange} className="border border-slate-300 rounded px-1 py-0.5 w-16 text-xs outline-none focus:ring-1 focus:ring-blue-500" />
                             ) : (
                               bill.billno || "N/A"
-                            )}
-                          </td>
-
-                          {/* File No */}
-                          <td className="px-2 py-3 border-r border-slate-200 text-center text-slate-500 whitespace-nowrap">
-                            {isEditing ? (
-                              <input type="text" name="fileno" value={editedData.fileno || ""} onChange={handleInputChange} className="border border-slate-300 rounded px-1 py-0.5 w-16 text-xs outline-none focus:ring-1 focus:ring-blue-500" />
-                            ) : (
-                              bill.fileno || "N/A"
-                            )}
-                          </td>
-
-                          {/* Work Info */}
-                          <td className="px-2 py-3 border-r border-slate-200 text-left font-sans max-w-xs truncate">
-                            {isEditing ? (
-                              <input type="text" name="work" value={editedData.work || ""} onChange={handleInputChange} className="border border-slate-300 rounded px-1 py-0.5 w-full text-xs outline-none focus:ring-1 focus:ring-blue-500" />
-                            ) : (
-                              bill.work || "N/A"
                             )}
                           </td>
 
@@ -489,22 +490,64 @@ const Billdetails = () => {
                             )}
                           </td>
 
-                          {/* Status Column */}
-                          <td className="px-2 py-3 border-r border-slate-200 text-center font-sans">
-                            {isEditing ? (
-                              <select name="status" value={editedData.status || ""} onChange={handleInputChange} className="border border-slate-300 rounded text-xs px-1 py-0.5 bg-white focus:ring-1 focus:ring-blue-500 outline-none">
-                                <option value="">-- Select --</option>
-                                <option value="PENDING">PENDING</option>
-                                <option value="Passed to Division">Passed to Division</option>
-                                <option value="Accounts">Accounts</option>
-                                <option value="PASSED">Bill Passed</option>
-                              </select>
-                            ) : (
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
-                                {bill.status || "PENDING"}
-                              </span>
-                            )}
-                          </td>
+                        {/* Status Column */}
+<td className="px-2 py-3 border-r border-slate-200 text-center font-sans">
+  {isEditing ? (
+    <div className="flex flex-col items-center gap-1">
+      {editedData._isCustomStatus ? (
+        <div className="flex items-center gap-1">
+          <input
+            type="text"
+            name="status"
+            value={editedData.status || ""}
+            onChange={handleInputChange}
+            placeholder="Custom status..."
+            className="border border-slate-300 rounded text-xs px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-500 w-28"
+          />
+          <button
+            type="button"
+            onClick={() => setEditedData({ ...editedData, _isCustomStatus: false, status: "" })}
+            className="text-[10px] text-blue-600 hover:underline"
+          >
+            List
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <select
+            name="status"
+            value={editedData.status || ""}
+            onChange={handleInputChange}
+            className="border border-slate-300 rounded text-xs px-1 py-0.5 bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+          >
+            <option value="">-- Select --</option>
+            <option value="PENDING">PENDING</option>
+            <option value="Passed to Division">Passed to Division</option>
+            <option value="Accounts">Accounts</option>
+            <option value="PASSED">Bill Passed</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setEditedData({ ...editedData, _isCustomStatus: true })}
+            className="text-[10px] text-blue-600 hover:underline"
+          >
+            Custom
+          </button>
+        </div>
+      )}
+    </div>
+  ) : (
+    <span
+      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+        bill.status === "PASSED"
+          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+          : "bg-amber-50 text-amber-700 border border-amber-200"
+      }`}
+    >
+      {bill.status || "PENDING"}
+    </span>
+  )}
+</td>
 
                           {/* Action Buttons */}
                           <td className="px-2 py-3 text-center font-sans">
@@ -525,16 +568,18 @@ const Billdetails = () => {
                     })}
                   </tbody>
 
-                  {/* Footer Summary Row */}
-                  <tfoot>
-                    <tr className="bg-slate-100 font-mono font-bold text-slate-900 border-t-2 border-slate-300">
-                      <td colSpan="6" className="px-3 py-3 border-r border-slate-200 text-right uppercase tracking-wider font-sans text-xs">Total Summary:</td>
+                  {/* Footer Summary Total Row */}
+                  <tfoot className="bg-slate-100 font-mono text-slate-900 font-bold border-t-2 border-slate-300">
+                    <tr>
+                      <td colSpan="4" className="px-3 py-3 text-center font-sans uppercase tracking-wider font-extrabold text-slate-700 bg-slate-200">
+                        Total Summary
+                      </td>
                       {dynamicKeys.map(col => (
-                        <td key={`total-${col.key}`} className={`px-2 py-3 border-r border-slate-200 ${col.isNumeric ? 'text-right text-indigo-700' : 'text-center text-slate-400'}`}>
-                          {col.isNumeric ? formatCurrency(calculateTotal(col.key)) : "—"}
+                        <td key={col.key} className={`px-2 py-3 border-r border-slate-200 bg-slate-100 text-slate-900 font-extrabold ${col.isNumeric ? 'text-right' : 'text-center'}`}>
+                          {formatCurrency(calculateTotal(col.key))}
                         </td>
                       ))}
-                      <td colSpan="3" className="bg-slate-50"></td>
+                      <td colSpan="3" className="bg-slate-200"></td>
                     </tr>
                   </tfoot>
                 </table>

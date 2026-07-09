@@ -11,6 +11,7 @@ import {
   FaChartLine,
   FaBell 
 } from "react-icons/fa"; 
+import { CheckCircle } from "lucide-react";
 
 const Managerhome = () => {
   const [auth] = useAuth();
@@ -197,8 +198,18 @@ const Managerhome = () => {
               isAction={true}
               onClick={() => navigate("/dashboard/manager/addbills")}
             />  
-
+          
+              
             <DashboardCard 
+              title="Penalty" 
+              subtitle="Manage and track penalties"
+              icon={<CheckCircle className="w-6 h-6 text-purple-600" />}
+              gradient="from-purple-500/10 to-pink-500/5"
+              borderColor="hover:border-purple-500"
+              onClick={() => navigate("/dashboard/manager/penalty")} 
+            />
+
+               <DashboardCard 
               title="Profitability" 
               subtitle="Real-time margin analysis"
               content="Coming Soon"
@@ -206,7 +217,17 @@ const Managerhome = () => {
               gradient="from-purple-500/10 to-pink-500/5"
               borderColor="hover:border-purple-500"
               onClick={() => navigate("/dashboard/manager/profitability")} 
+            />  
+
+             <DashboardCard 
+              title="BG Analysis" 
+              content="Coming Soon"
+              icon={<FaFileInvoiceDollar className="w-6 h-6 text-purple-600" />}
+              gradient="from-purple-500/10 to-pink-500/5"
+              borderColor="hover:border-purple-500"
+              onClick={() => navigate("")} 
             />
+
           </div>
         </main>
       </div>

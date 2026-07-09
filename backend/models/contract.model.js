@@ -56,6 +56,13 @@ type:String
 owner:{
 type:String
 },
+
+managerphone:{
+  type:String
+},
+managername:{
+  type:String
+},
      
  
     status: {

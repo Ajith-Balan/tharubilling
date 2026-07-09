@@ -199,6 +199,23 @@ const [showPassword, setShowPassword] = useState(false);
               </div>
             </div>
 
+                        <div className="bg-white rounded-3xl shadow-xl border overflow-hidden">
+                          <div className="bg-gradient-to-r from-blue-600 to-indigo-500 p-5">
+                <h2 className="text-2xl font-bold text-white">Manager Details</h2>
+              </div>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                      <div>
+                                        <label className={labelClass}>Manager Name</label>
+                                       <input type="text" name="managername" value={formData.managername} onChange={handleChange} className={inputClass}  />
+                                     </div>
+                                     <div>
+                                        <label className={labelClass}>Manager Phone</label>
+                                       <input type="text" name="managerphone" value={formData.managerphone} onChange={handleChange} className={inputClass}  />
+                                     </div>
+                                </div>
+                        </div>
+
+
             {/* Contract Duration */}
             <div className="bg-white rounded-3xl shadow-xl p-6">
               <h3 className="text-xl font-semibold mb-5">Contract Duration</h3>

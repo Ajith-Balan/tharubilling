@@ -6,7 +6,7 @@ import dotenv from 'dotenv'
 
 export async function createcontractController(req, res) {
   try {
-    const {date, railway,division,trainname, workname,nameofthework, fileno,contractNumber,extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner } = req.body;
+    const {date, railway,division,trainname, workname,nameofthework, fileno,contractNumber,extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner,managername,managerphone } = req.body;
 
     // Validation (add additional checks if necessary)
         const exisitingContract = await contractModel.findOne({ fileno });
@@ -32,7 +32,7 @@ export async function createcontractController(req, res) {
 
     // Create the train
     const contract = await contractModel.create({
-      railway, division, trainname, workname, nameofthework, fileno: newFileno, contractNumber, extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner
+      railway, division, trainname, workname, nameofthework, fileno: newFileno, contractNumber, extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner,managername,managerphone
     });
 
     // Send success response with the created site
@@ -103,7 +103,9 @@ export const bulkCreateContractsController = async (req, res) => {
        nameofthework: c.nameofthework || c["Name of the Work"] || "",
        remarks: c.remarks || c["Remarks"] || "",
         password: c.password || String(c["Password"] || "DefaultPass123"),
-        owner: c.owner || c["owner"] 
+        owner: c.owner || c["owner"] ,
+        managerphone: c.managerphone || c["managerphone"],
+        managername: c.managername || c["managername"]
 
       };
     });

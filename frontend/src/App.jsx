@@ -27,6 +27,7 @@ import Contracts from './pages/manager/Contracts';
 import BillHistory from './pages/manager/BillHistory';
 import EditContract from './pages/manager/EditContract';
 import Profitability from './pages/manager/ProfitabilityPage';
+import Penalty from './pages/manager/Penalty';
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
         <Route path='manager/billdetails' element={<BillHistory />} />
        <Route path='manager/editcon/:id' element={<EditContract />} />
        <Route path='manager/profitability' element={<Profitability />} />
+       <Route path='manager/penalty' element={<Penalty />} />
 
          
 
