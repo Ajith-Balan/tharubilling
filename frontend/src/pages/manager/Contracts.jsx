@@ -256,8 +256,21 @@ const fetchContracts = async () => {
                      
                         <td className="px-4 py-3 font-medium border-r">{contract.division || "N/A"}</td>
                         <td className="px-4 py-3 border-r capitalize">{contract.workname || "N/A"}</td>
-                        <td className="px-4 py-3 border-r capitalize">{contract.managername || "N/A"}</td>
-                        
+<td className="px-4 py-3 border-r">
+  <div className="flex text-center flex-col gap-1">
+    <div>
+      <p className="font-medium capitalize">
+        {contract.managername || "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="capitalize bg-green-500  px-2">
+        {contract.owner || ""}
+      </p>
+    </div>
+  </div>
+</td>                        
                         <td className="px-4 py-3 border-r">{contract.contractNumber || "N/A"}</td>
                        
 

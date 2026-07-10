@@ -228,6 +228,15 @@ const Managerhome = () => {
               onClick={() => navigate("")} 
             />
 
+             <DashboardCard 
+              title="Sub Contractor Analysis" 
+              content="Coming Soon"
+              icon={<FaFileInvoiceDollar className="w-6 h-6 text-purple-600" />}
+              gradient="from-green-500/10 to-blue-500/5"
+              borderColor="hover:border-green-500"
+              onClick={() => navigate("")} 
+            />
+
           </div>
         </main>
       </div>
