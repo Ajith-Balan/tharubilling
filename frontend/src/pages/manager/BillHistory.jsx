@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/Auth";
 import axios from "axios";
 import AdminMenu from "../../components/layout/AdminMenu";
-import { FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, FaSearch, FaFilter, FaSortAmountDown, FaFolderOpen, FaPercent, FaCalendarAlt,FaFileDownload } from "react-icons/fa";
+import { FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, FaSearch, FaFilter, FaSortAmountDown, FaFolderOpen, FaPercent, FaCalendarAlt, FaFileDownload } from "react-icons/fa";
 import { toast } from "react-toastify";
 import BackButton from "../../components/layout/BackButton";
 
@@ -22,7 +22,8 @@ const BillHistory = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [contractTab, setContractTab] = useState("All");
-
+  const [editingBill, setEditingBill] = useState(null);
+  const [editData, setEditData] = useState({});
   // Pagination Configuration
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
@@ -36,7 +37,6 @@ const BillHistory = () => {
         axios.get(`${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/getbills`)
       ]);
 
-      // 1. Sort Latest Contracts First (yyyy-mm-dd) Safely
       const contracts = (contractsRes.data.contracts || contractsRes.data || []).sort(
         (a, b) => new Date(b.fileno || 0) - new Date(a.fileno || 0)
       );
@@ -50,7 +50,6 @@ const BillHistory = () => {
 
       setContractsMap(mappedContracts);
 
-      // Latest bills first
       const sortedBills = (billsRes.data.bills || []).sort(
         (a, b) => new Date(b.einvoicedate) - new Date(a.einvoicedate)
       );
@@ -70,7 +69,6 @@ const BillHistory = () => {
     }
   }, [auth?.user]);
 
-  // Debounced Dynamic Search Endpoint handler
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.trim() !== "") {
@@ -96,6 +94,11 @@ const BillHistory = () => {
     return new Date(date).toLocaleDateString("en-GB").replace(/\//g, "-");
   };
 
+  const formatToInputDate = (dateString) => {
+    if (!dateString) return "";
+    return new Date(dateString).toISOString().split('T')[0];
+  };
+
   const formatCurrency = (num) => {
     if (num === undefined || num === null || isNaN(num)) return "-";
     return new Intl.NumberFormat("en-IN", {
@@ -104,11 +107,9 @@ const BillHistory = () => {
     }).format(num);
   };
 
-  // Core Data Filtering & Sorting Computation Layer
   const filteredAndSortedBills = useMemo(() => {
     let result = [...bills];
 
-    // Client-side search matching fallback
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
       result = result.filter((bill) =>
@@ -117,7 +118,6 @@ const BillHistory = () => {
       );
     }
 
-    // Status / E-Invoice Pending Filtering Clean Integration
     if (statusFilter !== "All") {
       if (statusFilter === "E-Invoice_Pending") {
         result = result.filter((bill) => bill.einvoicedate && (!bill.amountpssd || bill.amountpssd === ""));
@@ -126,7 +126,6 @@ const BillHistory = () => {
       }
     }
 
-    // Custom E-Invoice Date Range Filter Logic
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -138,11 +137,9 @@ const BillHistory = () => {
       result = result.filter((bill) => bill.einvoicedate && new Date(bill.einvoicedate) <= end);
     }
 
-
-    // Sorting Mechanics
     result.sort((a, b) => {
       if (sortBy === "date-desc") return new Date(b.month + "-01") - new Date(a.month + "-01");
-      if (sortBy === "date-asc") return new Date(a.month + "-01") - new Date(b.month + "-01");
+      if (sortBy === "date-asc") return new Date(a.month + "-01") - new Date(a.month + "-01");
       if (sortBy === "amount-desc") return (b.totalamount || 0) - (a.totalamount || 0);
       if (sortBy === "amount-asc") return (a.totalamount || 0) - (b.totalamount || 0);
       return 0;
@@ -161,7 +158,6 @@ const BillHistory = () => {
     }
   }, [totalPages, currentPage]);
 
-  // Paginate and Categorize dynamic structural logic
   const categorizedBills = useMemo(() => {
     const groups = {};
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -176,7 +172,6 @@ const BillHistory = () => {
     return groups;
   }, [filteredAndSortedBills, currentPage]);
 
-  // Ordered list of unique keys based on sorted parent contracts
   const orderedFileNos = useMemo(() => {
     return Object.keys(categorizedBills).sort((a, b) => {
       const contractA = contractsMap[a] || {};
@@ -189,59 +184,83 @@ const BillHistory = () => {
     });
   }, [categorizedBills, contractsMap, contractTab]);
 
-
-
-   // Client-Side Excel Workbook Builder function
-    const handleExportExcel = () => {
-      try {
-        if (filteredAndSortedBills.length === 0) {
-          toast.warning("No data matching applied filters to export.");
-          return;
-        }
-  
-        // Format flat tracking structures for cleaner row distribution
-        const exportRows = filteredAndSortedBills.map((bill) => {
-          const contract = contractsMap[bill.fileno] || {};
-          const gross = Number(bill.netamount) || 0;
-          const penaltyAmt = Number(bill.penalty) || 0;
-          const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
-  
-          return {
-            "File No": bill.fileno || "N/A",
-            "Contract / Work Name": contract.workname || "N/A",
-            "Division": contract.division || "N/A",
-            "Project Manager": contract.managerName || "N/A",
-            "Contract Value (₹)": contract.contractvalue || 0,
-            "Bill Number": bill.billno || "N/A",
-            "E-Invoice Date": bill.einvoicedate ? new Date(bill.einvoicedate).toDateString().split('T')[0] : "-",
-            "Period From": bill.billfrom ? new Date(bill.billfrom).toDateString().split('T')[0] : "-",
-            "Period To": bill.billto ? new Date(bill.billto).toDateString().split('T')[0] : "-",
-            "Gross Amount (₹)": bill.totalamount || 0,
-            "Amount Passed (₹)": bill.amountpssd || 0,
-            "Passed Date": bill.billpassdt ? new Date(bill.billpassdt).toDateString().split('T')[0] : "-",
-            "Penalty Levied (₹)": penaltyAmt,
-            "Penalty %": `${calculatedPercentage}%`,
-            "Bill Status": bill.status || "Processing"
-          };
-        });
-  
-        const worksheet = XLSX.utils.json_to_sheet(exportRows);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
-  
-        // Auto-fit Column configurations dynamically
-        const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
-          wch: Math.max(key.length, ...exportRows.map(row => String(row[key]).length)) + 3
-        }));
-        worksheet["!cols"] = colWidths;
-  
-        // Trigger standard browser download pipeline
-        XLSX.writeFile(workbook, `Contract_Penalty_Report_${new Date().toDateString().split('T')[0]}.xlsx`);
-        toast.success("Excel ledger file generated successfully!");
-      } catch (err) {
-        console.error("Export failure: ", err);
-        toast.error("Failed to compile Excel file export");
+  const handleExportExcel = () => {
+    try {
+      if (filteredAndSortedBills.length === 0) {
+        toast.warning("No data matching applied filters to export.");
+        return;
       }
+
+      const exportRows = filteredAndSortedBills.map((bill) => {
+        const contract = contractsMap[bill.fileno] || {};
+        const gross = Number(bill.netamount) || 0;
+        const penaltyAmt = Number(bill.penalty) || 0;
+        const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
+
+        return {
+          "File No": bill.fileno || "N/A",
+          "Contract / Work Name": contract.workname || "N/A",
+          "Division": contract.division || "N/A",
+          "Project Manager": contract.managerName || "N/A",
+          "Contract Value (₹)": contract.contractvalue || 0,
+          "Bill Number": bill.billno || "N/A",
+          "E-Invoice Date": bill.einvoicedate ? new Date(bill.einvoicedate).toDateString().split('T')[0] : "-",
+          "Period From": bill.billfrom ? new Date(bill.billfrom).toDateString().split('T')[0] : "-",
+          "Period To": bill.billto ? new Date(bill.billto).toDateString().split('T')[0] : "-",
+          "Gross Amount (₹)": bill.totalamount || 0,
+          "Amount Passed (₹)": bill.amountpssd || 0,
+          "Passed Date": bill.billpassdt ? new Date(bill.billpassdt).toDateString().split('T')[0] : "-",
+          "Penalty Levied (₹)": penaltyAmt,
+          "Penalty %": `${calculatedPercentage}%`,
+          "Bill Status": bill.status || "Processing"
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
+
+      const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
+        wch: Math.max(key.length, ...exportRows.map(row => String(row[key]).length)) + 3
+      }));
+      worksheet["!cols"] = colWidths;
+
+      XLSX.writeFile(workbook, `Contract_Penalty_Report_${new Date().toDateString().split('T')[0]}.xlsx`);
+      toast.success("Excel ledger file generated successfully!");
+    } catch (err) {
+      console.error("Export failure: ", err);
+      toast.error("Failed to compile Excel file export");
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/update-bill/${editingBill}`,
+        editData
+      );
+
+      toast.success("Bill updated");
+      setEditingBill(null);
+      loadData();
+    } catch (err) {
+      toast.error("Update failed");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this bill?")) return;
+
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/delete-bill/${id}`
+      );
+
+      toast.success("Bill deleted");
+      loadData();
+    } catch (err) {
+      toast.error("Delete failed");
+    }
   };
 
   return (
@@ -290,14 +309,14 @@ const BillHistory = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                   <button
-                                     onClick={handleExportExcel}
-                                     disabled={filteredAndSortedBills.length === 0}
-                                     className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition-all cursor-pointer"
-                                   >
-                                     <FaFileDownload size={13} />
-                                     <span>Download Excel ({filteredAndSortedBills.length})</span>
-                                   </button>
+                  <button
+                    onClick={handleExportExcel}
+                    disabled={filteredAndSortedBills.length === 0}
+                    className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition-all cursor-pointer"
+                  >
+                    <FaFileDownload size={13} />
+                    <span>Download Excel ({filteredAndSortedBills.length})</span>
+                  </button>
 
                   <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
                     <FaFilter size={12} className="text-slate-400" />
@@ -451,40 +470,242 @@ const BillHistory = () => {
                             <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-600">Penalty</th>
                             <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Others</th>
                             <th className="px-2 py-2 text-center font-bold">Status</th>
+                            <th className="px-2 py-2 text-center font-bold">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 font-mono text-slate-800">
                           {contractBills.map((bill) => {
-                            const gross = Number(bill.netamount) || 0;
-                            const penaltyAmt = Number(bill.penalty) || 0;
+                            const isEditing = editingBill === bill._id;
+                            const gross = Number(isEditing ? editData.netamount : bill.netamount) || 0;
+                            const penaltyAmt = Number(isEditing ? editData.penalty : bill.penalty) || 0;
                             const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
 
                             return (
                               <tr key={bill._id} className="hover:bg-slate-50/50 transition-colors whitespace-nowrap">
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">{formatDate(bill.einvoicedate)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center font-bold text-indigo-600">{bill.billno || "N/A"}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">{formatDate(bill.billfrom)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">{formatDate(bill.billto)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right font-semibold">{formatCurrency(bill.netamount)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">{formatCurrency(bill.gst)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right font-bold text-slate-900 bg-slate-50/50">{formatCurrency(bill.totalamount)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-emerald-700 font-bold bg-emerald-50/20">{formatCurrency(bill.amountpssd || 0)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">{formatDate(bill.billpassdt)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">{formatCurrency(bill.tds || 0)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">{formatCurrency(bill.gsttds || 0)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">{formatCurrency(bill.cc || 0)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">{formatCurrency(bill.sd || 0)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-red-500">{formatCurrency(bill.esi_pfpenalty || 0)}</td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-red-600 font-bold bg-red-50/10">
-                                  {formatCurrency(penaltyAmt)} <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
+                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                  {isEditing ? (
+                                    <input 
+                                      type="date" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                      value={formatToInputDate(editData.einvoicedate)}
+                                      onChange={(e) => setEditData({ ...editData, einvoicedate: e.target.value })}
+                                    />
+                                  ) : formatDate(bill.einvoicedate)}
                                 </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">{formatCurrency(bill.others || 0)}</td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-center font-bold text-indigo-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="text" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-16 text-center"
+                                      value={editData.billno || ""}
+                                      onChange={(e) => setEditData({ ...editData, billno: e.target.value })}
+                                    />
+                                  ) : bill.billno || "N/A"}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                  {isEditing ? (
+                                    <input 
+                                      type="date" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                      value={formatToInputDate(editData.billfrom)}
+                                      onChange={(e) => setEditData({ ...editData, billfrom: e.target.value })}
+                                    />
+                                  ) : formatDate(bill.billfrom)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                  {isEditing ? (
+                                    <input 
+                                      type="date" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                      value={formatToInputDate(editData.billto)}
+                                      onChange={(e) => setEditData({ ...editData, billto: e.target.value })}
+                                    />
+                                  ) : formatDate(bill.billto)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right font-semibold">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+                                      value={editData.netamount || ""}
+                                      onChange={(e) => setEditData({ ...editData, netamount: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.netamount)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-16 text-right"
+                                      value={editData.gst || ""}
+                                      onChange={(e) => setEditData({ ...editData, gst: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.gst)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right font-bold text-slate-900 bg-slate-50/50">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+                                      value={editData.totalamount || ""}
+                                      onChange={(e) => setEditData({ ...editData, totalamount: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.totalamount)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-emerald-700 font-bold bg-emerald-50/20">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+                                      value={editData.amountpssd || ""}
+                                      onChange={(e) => setEditData({ ...editData, amountpssd: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.amountpssd || 0)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                  {isEditing ? (
+                                    <input 
+                                      type="date" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                      value={formatToInputDate(editData.billpassdt)}
+                                      onChange={(e) => setEditData({ ...editData, billpassdt: e.target.value })}
+                                    />
+                                  ) : formatDate(bill.billpassdt)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                      value={editData.tds || ""}
+                                      onChange={(e) => setEditData({ ...editData, tds: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.tds || 0)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                      value={editData.gsttds || ""}
+                                      onChange={(e) => setEditData({ ...editData, gsttds: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.gsttds || 0)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                      value={editData.cc || ""}
+                                      onChange={(e) => setEditData({ ...editData, cc: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.cc || 0)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                      value={editData.sd || ""}
+                                      onChange={(e) => setEditData({ ...editData, sd: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.sd || 0)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-red-500">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                      value={editData.esi_pfpenalty || ""}
+                                      onChange={(e) => setEditData({ ...editData, esi_pfpenalty: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.esi_pfpenalty || 0)}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-red-600 font-bold bg-red-50/10">
+                                  {isEditing ? (
+                                    <div className="flex flex-col items-end">
+                                      <input 
+                                        type="number" 
+                                        className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                        value={editData.penalty || ""}
+                                        onChange={(e) => setEditData({ ...editData, penalty: e.target.value })}
+                                      />
+                                      <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {formatCurrency(penaltyAmt)} <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
+                                    </>
+                                  )}
+                                </td>
+                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                  {isEditing ? (
+                                    <input 
+                                      type="number" 
+                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                      value={editData.others || ""}
+                                      onChange={(e) => setEditData({ ...editData, others: e.target.value })}
+                                    />
+                                  ) : formatCurrency(bill.others || 0)}
+                                </td>
                                 <td className="px-2 py-2 text-center font-sans">
-                                  <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                                    bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                                  }`}>
-                                    {bill.status || "Processing"}
-                                  </span>
+                                  {isEditing ? (
+                                    <select
+                                      className="border border-slate-300 rounded text-[11px] p-0.5"
+                                      value={editData.status || "PENDING"}
+                                      onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                                    >
+                                      <option value="PENDING">Pending</option>
+                                      <option value="PASSED">Bill Passed</option>
+                                    </select>
+                                  ) : (
+                                    <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                                      bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                                    }`}>
+                                      {bill.status || "Processing"}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-2 text-center">
+                                  {isEditing ? (
+                                    <div className="flex justify-center gap-2">
+                                      <button
+                                        onClick={handleSave}
+                                        className="text-emerald-600 hover:text-emerald-800"
+                                        title="Save"
+                                      >
+                                        <FaSave size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingBill(null)}
+                                        className="text-slate-500 hover:text-slate-700"
+                                        title="Cancel"
+                                      >
+                                        <FaTimes size={14} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex justify-center gap-2">
+                                      <button
+                                        onClick={() => {
+                                          setEditingBill(bill._id);
+                                          setEditData({ ...bill });
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800"
+                                        title="Edit Inline"
+                                      >
+                                        <FaEdit size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(bill._id)}
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete"
+                                      >
+                                        <FaTrash size={14} />
+                                      </button>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -505,6 +726,7 @@ const BillHistory = () => {
                             <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700">{formatCurrency(contractTotals.esi_pfpenalty)}</td>
                             <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700 bg-red-50/40">{formatCurrency(contractTotals.penalty)}</td>
                             <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.others)}</td>
+                            <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
                             <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
                           </tr>
                         </tfoot>
