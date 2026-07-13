@@ -4,9 +4,10 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/Auth";
 import axios from "axios";
 import AdminMenu from "../../components/layout/AdminMenu";
-import { FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, FaSearch, FaFilter, FaSortAmountDown, FaFolderOpen, FaPercent, FaCalendarAlt, FaFileDownload } from "react-icons/fa";
+import { FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, FaSearch, FaFilter, FaSortAmountDown, FaFolderOpen, FaPercent, FaCalendarAlt, FaFileDownload, FaBuilding } from "react-icons/fa";
 import { toast } from "react-toastify";
 import BackButton from "../../components/layout/BackButton";
+import * as XLSX from "xlsx"; // SheetJS for Excel exports
 
 const BillHistory = () => {
   const [auth] = useAuth();
@@ -18,6 +19,7 @@ const BillHistory = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [penaltyFilter, setPenaltyFilter] = useState("All"); 
+  const [divisionFilter, setDivisionFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -69,6 +71,24 @@ const BillHistory = () => {
     }
   }, [auth?.user]);
 
+  // ==================== SILENT AUTOMATIC EMAIL TRIGGER ====================
+  useEffect(() => {
+    const triggerAutoEmails = async () => {
+      try {
+        // Quietly pings the backend route to run the check and send emails
+        await axios.post(`${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/invoiceupdate`);
+      } catch (err) {
+        // Suppress UI toasts and simply log errors internally for debugging
+        console.error("Background automated invoice email check failed:", err);
+      }
+    };
+
+    if (auth?.user) {
+      triggerAutoEmails();
+    }
+  }, [auth?.user]);
+  // ========================================================================
+
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.trim() !== "") {
@@ -107,6 +127,17 @@ const BillHistory = () => {
     }).format(num);
   };
 
+  // Compute unique divisions array for dropdown selection
+  const uniqueDivisions = useMemo(() => {
+    const divisions = new Set();
+    Object.values(contractsMap).forEach((contract) => {
+      if (contract.division) {
+        divisions.add(contract.division);
+      }
+    });
+    return Array.from(divisions).sort();
+  }, [contractsMap]);
+
   const filteredAndSortedBills = useMemo(() => {
     let result = [...bills];
 
@@ -124,6 +155,14 @@ const BillHistory = () => {
       } else {
         result = result.filter((bill) => (bill.status || "pending").toLowerCase() === statusFilter.toLowerCase());
       }
+    }
+
+    // Apply Division Filter
+    if (divisionFilter !== "All") {
+      result = result.filter((bill) => {
+        const contract = contractsMap[bill.fileno];
+        return contract && contract.division === divisionFilter;
+      });
     }
 
     if (startDate) {
@@ -146,7 +185,7 @@ const BillHistory = () => {
     });
 
     return result;
-  }, [bills, searchQuery, statusFilter, penaltyFilter, sortBy, startDate, endDate]);
+  }, [bills, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate, contractsMap]);
 
   const totalPages = useMemo(() => {
     return Math.ceil(filteredAndSortedBills.length / itemsPerPage) || 1;
@@ -184,54 +223,72 @@ const BillHistory = () => {
     });
   }, [categorizedBills, contractsMap, contractTab]);
 
-  const handleExportExcel = () => {
-    try {
-      if (filteredAndSortedBills.length === 0) {
-        toast.warning("No data matching applied filters to export.");
-        return;
+
+const handleExportExcel = () => {
+  try {
+    if (filteredAndSortedBills.length === 0) {
+      toast.warning("No data matching applied filters to export.");
+      return;
+    }
+
+    const sortedBillsForExport = [...filteredAndSortedBills].sort((a, b) => {
+      const fileA = String(a.fileno || "").trim();
+      const fileB = String(b.fileno || "").trim();
+      return fileA.localeCompare(fileB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const formatIfDate = (val, key) => {
+      if (!val) return "-";
+      const lowerKey = key.toLowerCase();
+      if (lowerKey.includes("date") || lowerKey.includes("dt")) {
+        const parsed = new Date(val);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toISOString().split('T')[0]; 
+        }
       }
+      return val;
+    };
 
-      const exportRows = filteredAndSortedBills.map((bill) => {
-        const contract = contractsMap[bill.fileno] || {};
-        const gross = Number(bill.netamount) || 0;
-        const penaltyAmt = Number(bill.penalty) || 0;
-        const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
+    const exportRows = sortedBillsForExport.map((bill) => {
+      const contract = contractsMap[bill.fileno] || {};
+      const gross = Number(bill.netamount) || 0;
+      const penaltyAmt = Number(bill.penalty) || 0;
+      const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
 
-        return {
-          "File No": bill.fileno || "N/A",
-          "Contract / Work Name": contract.workname || "N/A",
-          "Division": contract.division || "N/A",
-          "Project Manager": contract.managerName || "N/A",
-          "Contract Value (₹)": contract.contractvalue || 0,
-          "Bill Number": bill.billno || "N/A",
-          "E-Invoice Date": bill.einvoicedate ? new Date(bill.einvoicedate).toDateString().split('T')[0] : "-",
-          "Period From": bill.billfrom ? new Date(bill.billfrom).toDateString().split('T')[0] : "-",
-          "Period To": bill.billto ? new Date(bill.billto).toDateString().split('T')[0] : "-",
-          "Gross Amount (₹)": bill.totalamount || 0,
-          "Amount Passed (₹)": bill.amountpssd || 0,
-          "Passed Date": bill.billpassdt ? new Date(bill.billpassdt).toDateString().split('T')[0] : "-",
-          "Penalty Levied (₹)": penaltyAmt,
-          "Penalty %": `${calculatedPercentage}%`,
-          "Bill Status": bill.status || "Processing"
-        };
+      const formattedBill = {};
+      Object.keys(bill).forEach((key) => {
+        formattedBill[key] = formatIfDate(bill[key], key);
       });
 
-      const worksheet = XLSX.utils.json_to_sheet(exportRows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
+      const formattedContract = {};
+      Object.keys(contract).forEach((key) => {
+        formattedContract[`Contract_${key}`] = contract[key] ?? "-";
+      });
 
-      const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
-        wch: Math.max(key.length, ...exportRows.map(row => String(row[key]).length)) + 3
-      }));
-      worksheet["!cols"] = colWidths;
+      return {
+        ...formattedBill,
+        "Penalty Levied (₹)": penaltyAmt,
+        "Penalty %": `${calculatedPercentage}%`,
+        ...formattedContract
+      };
+    });
 
-      XLSX.writeFile(workbook, `Contract_Penalty_Report_${new Date().toDateString().split('T')[0]}.xlsx`);
-      toast.success("Excel ledger file generated successfully!");
-    } catch (err) {
-      console.error("Export failure: ", err);
-      toast.error("Failed to compile Excel file export");
-    }
-  };
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
+
+    const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
+      wch: Math.max(key.length, ...exportRows.map(row => String(row[key] ?? '').length)) + 3
+    }));
+    worksheet["!cols"] = colWidths;
+
+    XLSX.writeFile(workbook, `Contract_Complete_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success("Excel ledger file generated successfully with all fields!");
+  } catch (err) {
+    console.error("Export failure: ", err);
+    toast.error("Failed to compile Excel file export");
+  }
+};
 
   const handleSave = async () => {
     try {
@@ -275,7 +332,34 @@ const BillHistory = () => {
         ) : (
           <main className="flex-1 p-6 overflow-x-hidden">
             <BackButton />
-
+            {/* ====== FIXED HORIZONTAL SCROLL CONTROLS ====== */}
+            <div className="fixed bottom-6 right-6 z-50 flex gap-2 shadow-lg rounded-xl bg-white/80 backdrop-blur border border-slate-200 p-1.5">
+              <button
+                onClick={() => {
+                  const containers = document.querySelectorAll(".bulk-ledger-container");
+                  containers.forEach(container => container.scrollBy({ left: -300, behavior: "smooth" }));
+                }}
+                className="p-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors duration-150 focus:outline-none flex items-center justify-center"
+                title="Scroll Left"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+              
+              <button
+                onClick={() => {
+                  const containers = document.querySelectorAll(".bulk-ledger-container");
+                  containers.forEach(container => container.scrollBy({ left: 300, behavior: "smooth" }));
+                }}
+                className="p-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors duration-150 focus:outline-none flex items-center justify-center"
+                title="Scroll Right"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            </div>
             {/* KPI STATS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
@@ -317,6 +401,21 @@ const BillHistory = () => {
                     <FaFileDownload size={13} />
                     <span>Download Excel ({filteredAndSortedBills.length})</span>
                   </button>
+
+                  {/* Division Filter Dropdown */}
+                  <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+                    <FaBuilding size={11} className="text-slate-400" />
+                    <select
+                      className="bg-transparent text-xs font-semibold text-slate-600 focus:outline-none cursor-pointer"
+                      value={divisionFilter}
+                      onChange={(e) => setDivisionFilter(e.target.value)}
+                    >
+                      <option value="All">All Divisions</option>
+                      {uniqueDivisions.map(div => (
+                        <option key={div} value={div}>{div}</option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
                     <FaFilter size={12} className="text-slate-400" />
@@ -449,8 +548,8 @@ const BillHistory = () => {
                     </div>
 
                     {/* Desktop View Table */}
-                    <div className="hidden xl:block overflow-x-auto">
-                      <table className="min-w-full text-[11px] font-medium text-slate-700 border-collapse">
+                    <div className="bulk-ledger-container hidden xl:block max-h-[600px] overflow-auto bg-white rounded-xl shadow-sm border border-slate-200 scroll-smooth">   
+                      <table className="min-w-full text-[11px] font-medium text-slate-700 border-collapse"> 
                         <thead>
                           <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 whitespace-nowrap">
                             <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">E-Invoice Date</th>

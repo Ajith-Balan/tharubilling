@@ -35,9 +35,7 @@ type:String
   gst:{
 type: String,  },
 
-    berth_charges:{
-    type:String
-  }, 
+
   
     totalamount:{
     type:String
@@ -73,9 +71,7 @@ type:String
     penalty: {
       type: String,
     },
-    pg:{
-      type:String
-    },
+
     Linen_Loss:{
       type:String
     },
@@ -84,32 +80,21 @@ type:String
 type:String
     },
 
-    cc_postage:{
-type:String
-    },
 
-      postage:{
-type:String
-    }, 
-    
-    water_cess_charges:{
-type:String
-    },  
-      welfare_cess:{
-type:String
-    },  
-    electricity:{
-type:String
-    },
-building_cess:{
-type:String
-},
-    overpayment:{
-type:String
-    },
+ 
     status: {
       type: String,
     },
+    sendmail:{
+type:String
+    },
+
+
+    customFields: {
+  type: Map,
+  of: mongoose.Schema.Types.Mixed,
+  default: {},
+}
 
   },
   { timestamps: true }

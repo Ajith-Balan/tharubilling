@@ -1,17 +1,18 @@
 import billsmodel from "../models/bills.model.js";
-
+import cron from 'node-cron';
+import nodemailer from 'nodemailer'
+import contractModel from "../models/contract.model.js";
 
 
 
 export async function createbillController(req, res) {
   try {
-    const {  fileno, einvoicedate,billno,billfrom,billto,netamount,gst,totalamount,cheque,billpassdt,amountpssd,tds,gsttds,cc,sd,esi_pfpenalty,Linen_Loss,electricity,building_cess,others,penalty,pg,status } = req.body;
+    const {  ...data } = req.body;
 
     // Validation (add additional checks if necessary)
 
     // Create the train
-    const bill = await billsmodel.create({
-       fileno, einvoicedate,billno,billfrom,billto,netamount,gst,totalamount,cheque,billpassdt,amountpssd,tds,gsttds,cc,sd,esi_pfpenalty,Linen_Loss,electricity,building_cess,others,penalty,pg,status
+    const bill = await billsmodel.create({...data
     });
 
     // Send success response with the created site
@@ -210,6 +211,169 @@ export const searchbillController = async (req, res) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: "smtpout.secureserver.net",
+    port:587, //465 true
+    secure:false, // You can change this to your email service provider
+    auth: {
+      user: process.env.EMAIL_USER, // Your email address from the environment variables
+      pass: process.env.EMAIL_PASS, // Your email password or app password
+    },
+  });
+
+
+
+// Import your existing transporter configuration
+// Import your bill model
+export const checkAndSendDailyEInvoices = async () => {
+const formatDate = (dateVal) => {
+  if (!dateVal || dateVal === 'N/A') return 'N/A';
+  
+  let d = new Date(dateVal);
+  
+  // If native parsing fails for existing dash strings like '12-june-2012'
+  if (isNaN(d.getTime()) && typeof dateVal === 'string') {
+    const parts = dateVal.split('-');
+    if (parts.length === 3) {
+      const shortMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const monthStr = parts[1].toLowerCase().substring(0, 3);
+      const monthIndex = shortMonths.indexOf(monthStr);
+      
+      if (monthIndex !== -1) {
+        const year = parts[2];
+        const month = String(monthIndex + 1).padStart(2, '0');
+        const day = parts[0].padStart(2, '0');
+        d = new Date(`${year}-${month}-${day}`);
+      }
+    }
+  }
+
+  // Fallback if parsing completely fails
+  if (isNaN(d.getTime())) return dateVal; 
+  
+  // Array of months formatted with capitalized names
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const monthText = months[d.getMonth()]; // Gets the text string name
+  const year = d.getFullYear();
+  
+  // Returns your target string format
+  return `${day}-${monthText}-${year}`;
+};
+
+const formatCurrency = (amount) => {
+  if (!amount) return '₹0.00';
+  // Formats to Indian Rupee (₹) layout. Swap 'en-IN' to 'en-US' if you need dollars ($).
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR'
+  }).format(amount);
+};
+  try {
+    const todayStr = new Date().toISOString().split('T')[0]; 
+
+    // 1. Fetch today's bills that haven't been sent yet
+    const billsToday = await billsmodel.find({ 
+      einvoicedate: todayStr,
+      sendmail: { $ne: 1 } 
+    });
+
+    if (billsToday.length === 0) {
+      return;
+    }
+
+    // 2. Loop through each bill individually and try to claim it atomically
+    for (const bill of billsToday) {
+      
+      // This update will ONLY match if another instance hasn't updated it yet
+      const result = await billsmodel.updateOne(
+        { _id: bill._id, sendmail: { $ne: 1 } }, 
+        { $set: { sendmail: 1 } }
+      );
+
+      // If modifiedCount is 1, this process successfully "locked" the bill
+      if (result.modifiedCount === 1) {
+        
+        // FETCH THE CONTRACT FOR THIS SPECIFIC BILL ATOMICALLY INSIDE THE LOOP
+        const contract = await contractModel.findOne({ fileno: bill.fileno });
+        
+        const estimatedPassedDate = bill.estimatedPassedDate || "N/A";
+
+        const mailOptions = {
+          from: { name: 'Tharu & Sons', address: process.env.EMAIL_USER },
+          to: "ayalurajith@gmail.com",
+          subject: `E-Invoice Notification - Bill No: ${bill.billno}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+              <div style="background-color: #0044cc; padding: 20px; text-align: center; color: white;">
+                <h2 style="margin: 0;">T & S - E-Invoice Alert</h2>
+              </div>
+              <div style="padding: 20px; line-height: 1.6; color: #333;">
+                <h3>Hello,</h3>
+<p>This is to notify you that an E-Invoice has been raised today for <strong>${contract?.division ? `${contract.division} - ` : ''}${contract?.workname || 'N/A'}</strong>.</p>                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+               
+                  <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Bill No:</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${bill.billno}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Billing Period:</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${formatDate(bill.billfrom) || 'N/A'} to ${formatDate(bill.billto) || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Total Amount:</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #0044cc;">${formatCurrency(bill.totalamount)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Penalty Applied:</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; color: #cc0000;">${formatCurrency(bill.penalty) || '0'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Estimated Passed Date:</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${estimatedPassedDate}</td>
+                  </tr>
+                </table>
+
+                <br>
+
+                <p>Thank you,<br>AB TEAM</p>
+              </div>
+            </div>
+          `,
+        };
+
+        try {
+          await transporter.sendMail(mailOptions);
+        } catch (mailError) {
+          // Rollback flag if email physically fails to transmit
+          await billsmodel.updateOne({ _id: bill._id }, { $set: { sendmail: 0 } });
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error("Error in automated daily e-invoice cron job:", error);
+  }
+};
 
 // export async function deletesite(req,res){
 //   try{

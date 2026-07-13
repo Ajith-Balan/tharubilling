@@ -40,6 +40,8 @@ try {
     }
 
 
+    
+
  
     //register user
     const hashedPassword = await hashPassword(password);

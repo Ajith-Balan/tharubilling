@@ -8,41 +8,77 @@ import * as XLSX from "xlsx";
 
 const Addbill = () => {
   const [auth] = useAuth();
-  const initialState = {
-    fileno: "",
-    einvoicedate: "",
-    billno: "",
-    billfrom: "",
-    billto: "",
-    gst: "",
-    totalamount: "",
-    netamount: "",
-    amountpssd: "",
-    epf: "",
-    esi: "",
-    berth_charges: "",
-    tds: "",
-    gsttds: "",
-    cc: "",
-    sd: "",
-    esi_pfpenalty: "",
-    Linen_Loss: "",
-    others: "",
-    penalty: "",
-    postage: "",
-    welfare_cess: "",
-    water_cess_charge: "",
-    overpayment: "",
-    cheque: "",
-    billpassdt: "",
-    status: "",
-  };
-
+ // 1. Inside Addbill Component: Update state declarations
+const initialState = {
+  fileno: "",
+  einvoicedate: "",
+  billno: "",
+  billfrom: "",
+  billto: "",
+  gst: "",
+  totalamount: "",
+  netamount: "",
+  amountpssd: "",
+  epf: "",
+  esi: "",
+  berth_charges: "",
+  tds: "",
+  gsttds: "",
+  cc: "",
+  sd: "",
+  esi_pfpenalty: "",
+  Linen_Loss: "",
+  others: "",
+  penalty: "",
+  postage: "",
+  welfare_cess: "",
+  water_cess_charge: "",
+  overpayment: "",
+  cheque: "",
+  billpassdt: "",
+  status: "",
+  sendmail:"",
+  customFields: {}, // Holds custom fields: { "Field Label": "Value" }
+};
   const [contract, setContract] = useState([]);
   const [formData, setFormData] = useState(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
   const [isUploadingBulk, setIsUploadingBulk] = useState(false);
+
+
+const [newCustomKey, setNewCustomKey] = useState("");
+const [newCustomValue, setNewCustomValue] = useState("");
+
+
+
+// 2. Add handlers to manage custom fields locally before submit
+const handleAddCustomField = () => {
+  if (!newCustomKey.trim()) {
+    toast.error("Custom field name cannot be empty");
+    return;
+  }
+  
+  setFormData((prev) => ({
+    ...prev,
+    customFields: {
+      ...prev.customFields,
+      [newCustomKey.trim()]: newCustomValue
+    }
+  }));
+
+  // Clear inputs
+  setNewCustomKey("");
+  setNewCustomValue("");
+};
+
+const handleRemoveCustomField = (keyToRemove) => {
+  setFormData((prev) => {
+    const updatedCustom = { ...prev.customFields };
+    delete updatedCustom[keyToRemove];
+    return { ...prev, customFields: updatedCustom };
+  });
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -108,7 +144,7 @@ const Addbill = () => {
           "EPF": 0,
           "ESI": 0,
           "GST": 1800,
-           "Berth Charges": 0,
+          "Berth Charges": 0,
 
           "Total": 11800,
           "Cheque": "CHQ98765",
@@ -277,25 +313,7 @@ const handleBulkUploadSubmit = async (e) => {
                     />
                   </div>
 
-                  {/* <div className="mb-6">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Work Category</label>
-                    <select
-                      name="work"
-                      value={formData.work}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-                    >
-                      <option value="">Select Work</option>
-                      {(auth?.user?.workname || contract?.workname)
-                        ?.split(",")
-                        .map((work, index) => (
-                          <option key={index} value={work.trim()}>
-                            {work.trim()}
-                          </option>
-                        ))}
-                    </select>
-                  </div> */}
+           
 
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
                     <div>
@@ -380,11 +398,64 @@ const handleBulkUploadSubmit = async (e) => {
                   <input type="number" name="Linen_Loss" value={formData.Linen_Loss} onChange={handleChange} className={inputClass} />
                 </div>
                  <div>
-                  <label className={labelClass}>  Others</label>
+                  <label className={labelClass}>Others</label>
                   <input type="number" name="others" value={formData.others} onChange={handleChange} className={inputClass} />
                 </div>
               
               </div>
+
+              <div className="bg-white rounded-2xl shadow-md p-6">
+  <h2 className="text-xl font-semibold mb-5 text-gray-800 border-b pb-3">Additional Custom Fields</h2>
+  
+  {/* Render Active Custom Fields */}
+  {Object.keys(formData.customFields).length > 0 && (
+    <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+      {Object.entries(formData.customFields).map(([key, val]) => (
+        <div key={key} className="flex justify-between items-center bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-100">
+          <span className="text-sm font-medium text-slate-700"><strong>{key}:</strong> {val}</span>
+          <button 
+            type="button" 
+            onClick={() => handleRemoveCustomField(key)}
+            className="text-xs text-red-500 hover:text-red-700 font-semibold"
+          >
+            ✕ Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+
+  {/* Inputs to Add a New Custom Field */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+    <div>
+      <label className={labelClass}>Field Label Name</label>
+      <input 
+        type="text" 
+        value={newCustomKey} 
+        onChange={(e) => setNewCustomKey(e.target.value)} 
+        placeholder="e.g., Late Fee" 
+        className={inputClass} 
+      />
+    </div>
+    <div>
+      <label className={labelClass}>Field Value</label>
+      <input 
+        type="text" 
+        value={newCustomValue} 
+        onChange={(e) => setNewCustomValue(e.target.value)} 
+        placeholder="e.g., 500" 
+        className={inputClass} 
+      />
+    </div>
+    <button
+      type="button"
+      onClick={handleAddCustomField}
+      className="w-full py-2.5 bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-xl transition-all shadow-sm"
+    >
+      + Add Field
+    </button>
+  </div>
+</div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-md p-6">

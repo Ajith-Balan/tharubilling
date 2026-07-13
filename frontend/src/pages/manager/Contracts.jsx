@@ -4,19 +4,20 @@ import { useAuth } from "../../context/Auth";
 import axios from "axios";
 import AdminMenu from "../../components/layout/AdminMenu";
 import { toast } from "react-toastify";
-import { FaFileInvoiceDollar, FaBars, FaTimes, FaSearch, FaFilter, FaSortAmountDown } from "react-icons/fa";
+import { FaFileInvoiceDollar, FaBars, FaTimes, FaSearch, FaFilter, FaSortAmountDown, FaBuilding } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../../components/layout/BackButton";
+
 const Contracts = () => {
   const [auth] = useAuth();
   const [contracts, setContracts] = useState([]);
   const [bills, setBills] = useState([]);
   const navigate = useNavigate();
-  // const [showMenu, setShowMenu] = useState(true);
 
   // Search, Filter, & Sort States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [divisionFilter, setDivisionFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
   const [loading, setLoading] = useState(true);
 
@@ -29,27 +30,24 @@ const Contracts = () => {
     return new Date(date).toLocaleDateString("en-GB").replace(/\//g, "-");
   };
 
-// Fetch contracts from API
-const fetchContracts = async () => {
-  try {
-    setLoading(true);
-
-    const res = await axios.get(
-      `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`
-    );
-
-    const sortedContracts = (res.data.contracts || []).sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
-    setContracts(sortedContracts);
-  } catch (err) {
-    console.error("Error fetching contracts:", err);
-    toast.error("Failed to load contracts");
-  } finally {
-    setLoading(false);
-  }
-};
+  // Fetch contracts from API
+  const fetchContracts = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(
+        `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`
+      );
+      const sortedContracts = (res.data.contracts || []).sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setContracts(sortedContracts);
+    } catch (err) {
+      console.error("Error fetching contracts:", err);
+      toast.error("Failed to load contracts");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch bills from API
   const fetchBills = async () => {
@@ -73,15 +71,14 @@ const fetchContracts = async () => {
             `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/search/${searchTerm}`
           );
           setContracts(res.data || []);
-          setCurrentPage(1); // Reset to page 1 on new search query
+          setCurrentPage(1);
         } catch (err) {
           console.error("Error hitting search endpoint:", err);
-          // Fallback to primary list if search route fails locally
         }
       } else if (auth?.user) {
         fetchContracts();
       }
-    }, 400); // 400ms Debounce layer to optimize network API calls
+    }, 400);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, auth?.user]);
@@ -101,10 +98,19 @@ const fetchContracts = async () => {
   const contractPeriods = contracts.map((c) => c.fileno).filter(Boolean);
   const matchedBills = bills.filter((bill) => contractPeriods.includes(bill.fileno));
 
-  // 1. Apply Filtering Matrix
+  // Extract unique divisions dynamically from current dataset for the filter menu
+  const uniqueDivisions = Array.from(
+    new Set(contracts.map((c) => c.division).filter(Boolean))
+  ).sort();
+
+  // 1. Apply Filtering Matrix (Status, Division & Text Search)
   const filteredContracts = contracts.filter((contract) => {
     // Dropdown Status Filter
     if (statusFilter !== "All" && contract.status?.toLowerCase() !== statusFilter.toLowerCase()) {
+      return false;
+    }
+    // Dynamic Division Filter
+    if (divisionFilter !== "All" && contract.division !== divisionFilter) {
       return false;
     }
     // Client-side fallback text filter layer
@@ -132,33 +138,26 @@ const fetchContracts = async () => {
   const currentDisplayedContracts = sortedContracts.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(sortedContracts.length / itemsPerPage);
 
-
   if (loading) {
-  return (
-    <Layout>
-      <div className="p-6 animate-pulse">
-        <div className="h-10 bg-gray-200 rounded w-64 mb-6"></div>
-
-        <div className="bg-white rounded-xl shadow p-4">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="h-14 bg-gray-200 rounded mb-3"
-            ></div>
-          ))}
+    return (
+      <Layout>
+        <div className="p-6 animate-pulse">
+          <div className="h-10 bg-gray-200 rounded w-64 mb-6"></div>
+          <div className="bg-white rounded-xl shadow p-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-14 bg-gray-200 rounded mb-3"></div>
+            ))}
+          </div>
         </div>
-      </div>
-    </Layout>
-  );
-}
+      </Layout>
+    );
+  }
+
   return (
     <Layout title="Contract & Bill Management - Manager">
       <div className="flex flex-col lg:flex-row bg-gray-100 min-h-screen">
-
-          {/* <AdminMenu /> */}
-       
         <main className="flex-1 p-4 lg:p-6">
-          <BackButton  />
+          <BackButton />
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Contract Dashboard</h1>
@@ -178,12 +177,35 @@ const fetchContracts = async () => {
               />
             </div>
 
+            {/* Division Filter Dropdown */}
+            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-1.5">
+              <FaBuilding className="text-slate-500 mr-2" />
+              <select
+                value={divisionFilter}
+                onChange={(e) => {
+                  setDivisionFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm max-w-[160px]"
+              >
+                <option value="All">All Divisions</option>
+                {uniqueDivisions.map((div) => (
+                  <option key={div} value={div}>
+                    {div}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Status Filter Dropdown */}
             <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-1.5">
               <FaFilter className="text-slate-500 mr-2" />
               <select
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm"
               >
                 <option value="All">All Statuses</option>
@@ -198,7 +220,10 @@ const fetchContracts = async () => {
               <FaSortAmountDown className="text-slate-500 mr-2" />
               <select
                 value={sortBy}
-                onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm"
               >
                 <option value="date-desc">Newest Start Date</option>
@@ -211,7 +236,6 @@ const fetchContracts = async () => {
 
           {/* Table Header Section */}
           <div className="mb-4 flex justify-between items-center">
-            {/* <h2 className="text-xl font-bold text-gray-700">Active Contracts</h2> */}
             <span className="text-sm text-gray-500">
               Showing {sortedContracts.length > 0 ? indexOfFirstItem + 1 : 0}-
               {Math.min(indexOfLastItem, sortedContracts.length)} of {sortedContracts.length}
@@ -230,65 +254,53 @@ const fetchContracts = async () => {
                   <thead className="bg-gray-50 border-b text-gray-800">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold border-r">File No</th>
-                      
                       <th className="px-4 py-3 text-left font-semibold border-r">Division</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Name of Work</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Manager</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Number</th>
-
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Value</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Penalty</th>
-                     <th className="px-4 py-3 text-left font-semibold border-r">Started On</th>
-
+                      <th className="px-4 py-3 text-left font-semibold border-r">Started On</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Validity / End Date</th>
-                      {/* <th className="px-4 py-3 text-left font-semibold border-r">Extension Date</th> */}
                       <th className="px-4 py-3 text-left font-semibold text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {currentDisplayedContracts.map((contract) => (
-                      <tr 
-                        key={contract._id} 
+                      <tr
+                        key={contract._id}
                         className="hover:bg-gray-50 transition-colors cursor-pointer"
                         onClick={() => navigate(`/dashboard/manager/bills/${contract.fileno}`)}
                       >
-                        <td className="px-4 py-3 border-r font-semibold text-purple-700">{contract.fileno || "N/A"}</td>
-                     
-                        <td className="px-4 py-3 font-medium border-r">{contract.division || "N/A"}</td>
-                        <td className="px-4 py-3 border-r capitalize">{contract.workname || "N/A"}</td>
-<td className="px-4 py-3 border-r">
-  <div className="flex text-center flex-col gap-1">
-    <div>
-      <p className="font-medium capitalize">
-        {contract.managername || "N/A"}
-      </p>
-    </div>
-
-    <div>
-      <p className="capitalize bg-green-500  px-2">
-        {contract.owner || ""}
-      </p>
-    </div>
-  </div>
-</td>                        
-                        <td className="px-4 py-3 border-r">{contract.contractNumber || "N/A"}</td>
-                       
-
-                        <td className="px-4 py-3 border-r">₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}</td>
- {/* <td className="px-4 py-3 border-r text-sm">
-  <div className="space-y-1">
-    <div className="flex items-center gap-2 text-gray-900 dark:text-gray-700 font-medium">
-      <svg className="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-      {contract.managername || "N/A"}
-    </div>
-    {contract.managerphone && (
-      <div className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-900">
-        <svg className="w-3.5 h-3.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.72.59.59 0 00.74.24l.85-.17a1 1 0 011.03.11l1.25.83a1 1 0 01.42.82V10a3 3 0 01-3 3h-1c-1.104 0-2-.896-2-2V7H5a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-3.5a1 1 0 01.42-.82l1.25-.83a1 1 0 011.03-.11l.85.17a.59.59 0 00.74-.24l.3-.6c.214-.43.5-.81.85-1.12V19a2 2 0 01-2 2h-3.28a1 1 0 01-.94-.72l-.3-.9a1 1 0 00-.74-.72l-1.01-.25a1 1 0 00-1.03.11l-.8.53a1 1 0 01-1.03.11l-3.2-.8a1 1 0 01-.72-.94V5z" /></svg>
-        {contract.managerphone}
-      </div>
-    )}
-  </div>
-</td> */}
+                        <td className="px-4 py-3 border-r font-semibold text-purple-700">
+                          {contract.fileno || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 font-medium border-r">
+                          {contract.division || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 border-r capitalize">
+                          {contract.workname || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 border-r">
+                          <div className="flex text-center flex-col gap-1">
+                            <div>
+                              <p className="font-medium capitalize">
+                                {contract.managername || "N/A"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="capitalize bg-green-500 px-2 text-white text-xs rounded">
+                                {contract.owner || ""}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 border-r">
+                          {contract.contractNumber || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 border-r">
+                          ₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}
+                        </td>
                         <td className="px-2 py-2 border-r">
                           {(() => {
                             const contractValue = Number(contract.contractvalue || 0);
@@ -313,15 +325,15 @@ const fetchContracts = async () => {
                             );
                           })()}
                         </td>
-
-                           <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold text-purple-700">{formatDate(contract.startdate) || "N/A"}</td>
+                        <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold text-purple-700">
+                          {formatDate(contract.startdate) || "N/A"}
+                        </td>
                         <td className="px-4 py-3 border-r">
                           {(() => {
                             const billAmount = matchedBills
                               .filter((bill) => bill.fileno === contract.fileno)
                               .reduce((sum, bill) => sum + (Number(bill.totalamount) || 0), 0);
 
-                            // if (!billAmount || !contract.contractvalue) return "N/A";
                             const percentage = getCompletionPercentage(billAmount, contract.contractvalue);
                             let color = "bg-red-500";
                             if (percentage < 25) color = "bg-green-500";
@@ -343,8 +355,7 @@ const fetchContracts = async () => {
                               </div>
                             );
                           })()}
-                        </td> 
-                        {/* <td className="px-4 py-3  whitespace-nowrap text-center  border-r">{contract.extension ? formatDate(contract.extension) : "-"}</td> */}
+                        </td>
                         <td
                           className={`px-4 py-3 text-center font-bold ${
                             contract.status === "Active"
@@ -382,7 +393,7 @@ const fetchContracts = async () => {
                 ))}
               </div>
 
-              {/* Functional Pagination Pagination Dashboard Layout Component */}
+              {/* Functional Pagination Component */}
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-xl shadow border border-gray-200">
                   <button
@@ -404,7 +415,6 @@ const fetchContracts = async () => {
                   </button>
                 </div>
               )}
-
             </div>
           )}
         </main>
