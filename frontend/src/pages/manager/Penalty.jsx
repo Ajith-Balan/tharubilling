@@ -188,9 +188,22 @@ const Penalty = () => {
     return result;
   }, [bills, contractsMap, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate]);
 
-  const totalPages = useMemo(() => {
-    return Math.ceil(filteredAndSortedBills.length / itemsPerPage) || 1;
-  }, [filteredAndSortedBills]);
+    const contractFilteredBills = useMemo(() => {
+    if (contractTab === "All") return filteredAndSortedBills;
+  
+    return filteredAndSortedBills.filter((bill) => {
+      const contract = contractsMap[bill.fileno] || {};
+      return (
+        (contract.status || "").toLowerCase() === contractTab.toLowerCase()
+      );
+    });
+  }, [filteredAndSortedBills, contractsMap, contractTab]);
+  
+
+
+const totalPages = useMemo(() => {
+  return Math.ceil(contractFilteredBills.length / itemsPerPage) || 1;
+}, [contractFilteredBills]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -198,49 +211,34 @@ const Penalty = () => {
     }
   }, [totalPages, currentPage]);
 
-  // Paginate and Categorize dynamic structures
-  const categorizedBills = useMemo(() => {
-    const groups = {};
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const paginatedSlice = filteredAndSortedBills.slice(indexOfFirstItem, indexOfLastItem);
 
-    paginatedSlice.forEach((bill) => {
-      const key = bill.fileno || "UNASSIGNED";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(bill);
-    });
-    return groups;
-  }, [filteredAndSortedBills, currentPage]);
+const categorizedBills = useMemo(() => {
+  const groups = {};
 
-  // Comprehensive calculation of contract groups to respect contract-based rules
-  const orderedFileNos = useMemo(() => {
-    return Object.keys(categorizedBills).sort((a, b) => {
-      const contractA = contractsMap[a] || {};
-      const contractB = contractsMap[b] || {};
-      return new Date(contractB.date || 0) - new Date(contractA.date || 0);
-    }).filter((fileno) => {
-      const contract = contractsMap[fileno] || {};
-      
-      // Contract Status Tab
-      if (contractTab !== "All" && (contract.status || "").toLowerCase() !== contractTab.toLowerCase()) {
-        return false;
-      }
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
-      // Contract vs Bill View Mode Filters
-      if (viewModeFilter !== "All") {
-        const contractValue = Number(contract.contractvalue || 0);
-        const relatedBills = categorizedBills[fileno] || [];
-        const combinedPenalty = relatedBills.reduce((sum, b) => sum + Number(b.penalty || 0), 0);
-        const contractPenaltyPercent = contractValue > 0 ? (combinedPenalty / contractValue) * 100 : 0;
+  const paginatedSlice = contractFilteredBills.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
 
-        if (viewModeFilter === "HighContractPenalty" && contractPenaltyPercent <= 4) return false;
-        if (viewModeFilter === "LowContractPenalty" && contractPenaltyPercent > 4) return false;
-      }
+  paginatedSlice.forEach((bill) => {
+    const key = bill.fileno || "UNASSIGNED";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(bill);
+  });
 
-      return true;
-    });
-  }, [categorizedBills, contractsMap, contractTab, viewModeFilter]);
+  return groups;
+}, [contractFilteredBills, currentPage]);
+
+ const orderedFileNos = useMemo(() => {
+   return Object.keys(categorizedBills).sort((a, b) => {
+     const contractA = contractsMap[a] || {};
+     const contractB = contractsMap[b] || {};
+     return new Date(contractB.fileno || 0) - new Date(contractA.fileno || 0);
+   });
+ }, [categorizedBills, contractsMap]);
 
   // Client-Side Excel Workbook Builder function
   const handleExportExcel = () => {

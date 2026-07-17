@@ -179,17 +179,9 @@ const Managerhome = () => {
               onClick={() => navigate("/dashboard/manager/billdetails")}
             />
 
-            <DashboardCard 
-              title="Create Contract" 
-              subtitle="Draft and assign a new contract"
-              icon={<FaUserTie className="w-6 h-6 text-amber-600" />}
-              gradient="from-amber-500/10 to-orange-500/5"
-              borderColor="hover:border-amber-500"
-              isAction={true}
-              onClick={() => navigate("/dashboard/manager/createcontracts")}
-            />
+         
 
-            <DashboardCard 
+            {/* <DashboardCard 
               title="Add Bill" 
               subtitle="Generate a new statement of expense"
               icon={<FaFileInvoiceDollar className="w-6 h-6 text-rose-600" />}
@@ -197,7 +189,7 @@ const Managerhome = () => {
               borderColor="hover:border-rose-500"
               isAction={true}
               onClick={() => navigate("/dashboard/manager/addbills")}
-            />  
+            />   */}
           
               
             <DashboardCard 
@@ -225,7 +217,7 @@ const Managerhome = () => {
               icon={<FaFileInvoiceDollar className="w-6 h-6 text-purple-600" />}
               gradient="from-purple-500/10 to-pink-500/5"
               borderColor="hover:border-purple-500"
-              onClick={() => navigate("")} 
+              onClick={() => navigate("/dashboard/manager/bganalysis")} 
             />
 
              <DashboardCard 
@@ -234,7 +226,19 @@ const Managerhome = () => {
               icon={<FaFileInvoiceDollar className="w-6 h-6 text-purple-600" />}
               gradient="from-green-500/10 to-blue-500/5"
               borderColor="hover:border-green-500"
-              onClick={() => navigate("")} 
+              onClick={() => navigate("/dashboard/manager/subcontractors")} 
+            />
+
+               <DashboardCard 
+              title="Site Expenses" 
+             content="Coming Soon"
+
+              subtitle="Manage site-related expenses"
+              icon={<FaUserTie className="w-6 h-6 text-amber-600" />}
+              gradient="from-amber-500/10 to-orange-500/5"
+              borderColor="hover:border-amber-500"
+              isAction={true}
+              onClick={() => navigate("/dashboard/manager/expenses")}
             />
 
           </div>

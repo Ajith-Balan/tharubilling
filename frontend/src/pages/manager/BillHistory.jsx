@@ -187,9 +187,22 @@ const BillHistory = () => {
     return result;
   }, [bills, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate, contractsMap]);
 
-  const totalPages = useMemo(() => {
-    return Math.ceil(filteredAndSortedBills.length / itemsPerPage) || 1;
-  }, [filteredAndSortedBills]);
+  const contractFilteredBills = useMemo(() => {
+  if (contractTab === "All") return filteredAndSortedBills;
+
+  return filteredAndSortedBills.filter((bill) => {
+    const contract = contractsMap[bill.fileno] || {};
+    return (
+      (contract.status || "").toLowerCase() === contractTab.toLowerCase()
+    );
+  });
+}, [filteredAndSortedBills, contractsMap, contractTab]);
+
+
+
+const totalPages = useMemo(() => {
+  return Math.ceil(contractFilteredBills.length / itemsPerPage) || 1;
+}, [contractFilteredBills]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -197,31 +210,34 @@ const BillHistory = () => {
     }
   }, [totalPages, currentPage]);
 
-  const categorizedBills = useMemo(() => {
-    const groups = {};
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const paginatedSlice = filteredAndSortedBills.slice(indexOfFirstItem, indexOfLastItem);
+const categorizedBills = useMemo(() => {
+  const groups = {};
 
-    paginatedSlice.forEach((bill) => {
-      const key = bill.fileno || "UNASSIGNED";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(bill);
-    });
-    return groups;
-  }, [filteredAndSortedBills, currentPage]);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
-  const orderedFileNos = useMemo(() => {
-    return Object.keys(categorizedBills).sort((a, b) => {
-      const contractA = contractsMap[a] || {};
-      const contractB = contractsMap[b] || {};
-      return new Date(contractB.fileno || 0) - new Date(contractA.fileno || 0);
-    }).filter((fileno) => {
-      const contract = contractsMap[fileno] || {};
-      if (contractTab === "All") return true;
-      return (contract.status || "").toLowerCase() === contractTab.toLowerCase();
-    });
-  }, [categorizedBills, contractsMap, contractTab]);
+  const paginatedSlice = contractFilteredBills.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+
+  paginatedSlice.forEach((bill) => {
+    const key = bill.fileno || "UNASSIGNED";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(bill);
+  });
+
+  return groups;
+}, [contractFilteredBills, currentPage]);
+
+
+const orderedFileNos = useMemo(() => {
+  return Object.keys(categorizedBills).sort((a, b) => {
+    const contractA = contractsMap[a] || {};
+    const contractB = contractsMap[b] || {};
+    return new Date(contractB.fileno || 0) - new Date(contractA.fileno || 0);
+  });
+}, [categorizedBills, contractsMap]);
 
 
 const handleExportExcel = () => {
@@ -320,6 +336,48 @@ const handleExportExcel = () => {
     }
   };
 
+const passedAmount = filteredAndSortedBills.reduce((sum, bill) => {
+  const value = String(bill.amountpssd || "").replace(/,/g, "").trim();
+  const amount = Number(value);
+
+  return sum + (Number.isFinite(amount) ? amount : 0);
+}, 0);
+const pendingAmount = filteredAndSortedBills
+  .filter(b => b.status === "PENDING")
+  .reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
+
+const totalPenalty = filteredAndSortedBills.reduce((sum, bill) => {
+  return (
+    sum +
+    Number(bill.penalty || 0) 
+  );
+}, 0);
+
+const grandTotal = filteredAndSortedBills.reduce(
+  (sum, bill) => {
+    const value = String(bill.totalamount || "").replace(/,/g, "").trim();
+    const amount = Number(value);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  },
+  0
+);
+
+const formatIndianCurrency = (amount) => {
+  if (!Number.isFinite(amount)) return "0";
+
+  if (amount >= 10000000) {
+    // 1 Crore = 1,00,00,000
+    return `${(amount / 10000000).toFixed(2)} Cr`;
+  }
+
+  if (amount >= 100000) {
+    // 1 Lakh = 1,00,000
+    return `${(amount / 100000).toFixed(2)} L`;
+  }
+
+  return amount.toLocaleString("en-IN");
+};
+
   return (
     <Layout title="Bill History Categorized - Manager">
       <div className="flex flex-col bg-slate-50 min-h-screen font-sans">
@@ -360,21 +418,58 @@ const handleExportExcel = () => {
                 </svg>
               </button>
             </div>
-            {/* KPI STATS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">Pending Operations Checklist</span>
-                <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
-                  {filteredAndSortedBills.filter(b => b.status !== "PASSED").length} Bills Awaiting Approval
-                </span>
-              </div>
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">Filtered Dataset Size</span>
-                <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                  Showing {filteredAndSortedBills.length} Match Records
-                </span>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3  gap-4 mb-6">
+
+  {/* Pending Bills */}
+  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+    <span className="text-sm font-medium text-slate-500">
+      Pending Operations Checklist
+    </span>
+    <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+      {filteredAndSortedBills.filter(b => b.status !== "PASSED").length} Bills
+    </span>
+  </div>
+
+  {/* Pending Amount */}
+  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+    <span className="text-sm font-medium text-slate-500">
+      Pending for Pass Amount
+    </span>
+    <span className="text-sm font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+      ₹ {formatIndianCurrency(pendingAmount)}
+    </span>
+  </div>
+
+  {/* Passed Amount */}
+  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+    <span className="text-sm font-medium text-slate-500">
+      Passed Amount
+    </span>
+    <span className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">
+      ₹ {formatIndianCurrency(passedAmount)}
+    </span>
+  </div>
+
+  {/* Total Penalty */}
+  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+    <span className="text-sm font-medium text-slate-500">
+      Total Penalty
+    </span>
+    <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+      ₹ {formatIndianCurrency(totalPenalty)}
+    </span>
+  </div>
+
+  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+  <span className="text-sm font-medium text-slate-500">
+    Total Bill Amount
+  </span>
+  <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+    ₹ {formatIndianCurrency(grandTotal)}
+  </span>
+</div>
+
+</div>
 
             {/* FILTER & SORT ACTION CONTROLS */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm space-y-4">

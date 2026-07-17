@@ -23,7 +23,7 @@ const Contracts = () => {
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = 100;
 
   const formatDate = (date) => {
     if (!date) return "N/A";

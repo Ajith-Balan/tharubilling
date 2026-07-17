@@ -8,23 +8,7 @@ import { FaFileExcel, FaUpload, FaDownload } from "react-icons/fa";
 
 const Addcontracts = () => {
   const [bgItems, setBgItems] = useState([{ key: "", value: "" }]);
-  const initialState = {
-    date: "",
-    trainname: "",
-    workname: "",
-    nameofthework: "",
-    railway: "",
-    division: "",
-    contractNumber: "",
-    extension: "",
-    password: "",
-    startdate: "",
-    enddate: "",
-    contractvalue: "",
-    bg: "",
-    validity: "",
-    status: "ongoing",
-  };
+  const initialState = {};
 
   const [formData, setFormData] = useState(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -307,9 +291,15 @@ const Addcontracts = () => {
                 <div>
                   <label className={labelClass}>Status</label>
                   <select name="status" value={formData.status} onChange={handleChange} className={inputClass}>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="not-started">Not started</option>
+                    <option value="Active">Active</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Completed">Completed</option>
                   </select>
+                </div>
+
+                   <div>
+                  <label className={labelClass}>Remarks</label>
+                  <input type="text" name="remarks" value={formData.remarks} onChange={handleChange} className={inputClass} />
                 </div>
               </div>
             </div>

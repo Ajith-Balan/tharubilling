@@ -10,34 +10,7 @@ const Addbill = () => {
   const [auth] = useAuth();
  // 1. Inside Addbill Component: Update state declarations
 const initialState = {
-  fileno: "",
-  einvoicedate: "",
-  billno: "",
-  billfrom: "",
-  billto: "",
-  gst: "",
-  totalamount: "",
-  netamount: "",
-  amountpssd: "",
-  epf: "",
-  esi: "",
-  berth_charges: "",
-  tds: "",
-  gsttds: "",
-  cc: "",
-  sd: "",
-  esi_pfpenalty: "",
-  Linen_Loss: "",
-  others: "",
-  penalty: "",
-  postage: "",
-  welfare_cess: "",
-  water_cess_charge: "",
-  overpayment: "",
-  cheque: "",
-  billpassdt: "",
-  status: "",
-  sendmail:"",
+
   customFields: {}, // Holds custom fields: { "Field Label": "Value" }
 };
   const [contract, setContract] = useState([]);

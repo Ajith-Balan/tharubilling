@@ -21,7 +21,7 @@ const Billdetails = () => {
   // 1. Identify schema fields to exclude from dynamic column parsing
   const staticKeys = [
     "_id", "einvoicedate", "billno", "billfrom", "billto", 
-    "billpassdt", "status", "_isCustomStatus", "__v", "createdAt", "updatedAt"
+    "billpassdt", "status", "_isCustomStatus", "__v", "createdAt", "updatedAt","fileno"
   ];
 
   // 2. Compute dynamic columns natively by scanning top-level schemas + the customFields object
@@ -485,7 +485,8 @@ const Billdetails = () => {
         <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Date</th>
         <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Bill No.</th>
         <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Period From</th>
-        <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Period To</th>
+        <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Period To</th>      
+
         
         {/* Dynamic Custom Fields Headings */}
         {dynamicKeys.map((col) => (
@@ -544,7 +545,9 @@ const Billdetails = () => {
               ) : (
                 formatDate(bill.billto)
               )}
-            </td>
+            </td>    
+
+
 
             {/* Render Breakdown Columns dynamically */}
             {dynamicKeys.map(col => {
@@ -615,6 +618,7 @@ const Billdetails = () => {
                         <option value="Passed to Division">Passed to Division</option>
                         <option value="Accounts">Accounts</option>
                         <option value="PASSED">Bill Passed</option>
+                        <option value="CANCELLED">Bill Cancelled</option>
                       </select>
                       <button
                         type="button"
@@ -631,7 +635,9 @@ const Billdetails = () => {
                   className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     bill.status === "PASSED"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                      : bill.status === "CANCELLED"
+                        ? "bg-red-50 text-red-700 border border-red-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
                   }`}
                 >
                   {bill.status || "PENDING"}
@@ -714,7 +720,9 @@ const Billdetails = () => {
                       </div>
                       <div>
                         <span className="text-slate-400 font-sans block">Processing Status:</span>
-                        <span className="font-sans font-bold text-indigo-600">{bill.status || "Processing"}</span>
+                        <span className={`font-sans font-bold ${bill.status === "CANCELLED" ? "text-red-600" : "text-indigo-600"}`}>
+                          {bill.status || "Processing"}
+                        </span>
                       </div>
                     </div>
                   </div>

@@ -25,7 +25,7 @@ const EditContract = () => {
     contractvalue: "",
     bg: "",
     validity: "",
-    status: "ongoing",
+    status: "",
   };
 
   const [formData, setFormData] = useState(initialState);

@@ -28,7 +28,9 @@ import BillHistory from './pages/manager/BillHistory';
 import EditContract from './pages/manager/EditContract';
 import Profitability from './pages/manager/ProfitabilityPage';
 import Penalty from './pages/manager/Penalty';
-
+import Expenses from './pages/manager/Expenses';
+import Subcontract from './pages/manager/Subcontract';
+import Bganalysis from './pages/manager/Bganalysis';
 function App() {
   return (
     <>
@@ -68,6 +70,9 @@ function App() {
        <Route path='manager/editcon/:id' element={<EditContract />} />
        <Route path='manager/profitability' element={<Profitability />} />
        <Route path='manager/penalty' element={<Penalty />} />
+       <Route path='manager/expenses' element={<Expenses />} />
+       <Route path='manager/subcontractors' element={<Subcontract />} />
+       <Route path='manager/bganalysis' element={<Bganalysis />} />
 
          
 

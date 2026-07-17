@@ -294,6 +294,7 @@ export const searchcontractController = async (req, res) => {
     const results = await contractModel.find({
       $or: [
         { workname: { $regex: keyword, $options: "i" } },
+        { division: { $regex: keyword, $options: "i" } },
         { fileno: { $regex: keyword, $options: "i" } },
         { managername: { $regex: keyword, $options: "i" } },
         { contractNumber: { $regex: keyword, $options: "i" } },
