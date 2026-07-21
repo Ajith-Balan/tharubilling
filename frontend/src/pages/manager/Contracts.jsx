@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect,useRef } from "react";
 import Layout from "../../components/layout/Layout";
 import { useAuth } from "../../context/Auth";
 import axios from "axios";
 import AdminMenu from "../../components/layout/AdminMenu";
 import { toast } from "react-toastify";
-import { FaFileInvoiceDollar, FaBars, FaTimes, FaSearch, FaFilter, FaSortAmountDown, FaBuilding } from "react-icons/fa";
+import { FaFileInvoiceDollar,FaCheckCircle,FaClipboardCheck,FaTimesCircle, FaBars, FaTimes, FaSearch, FaFilter, FaSortAmountDown, FaBuilding,FaFolderOpen,FaBell  } from "react-icons/fa";
+
 import { useNavigate } from "react-router-dom";
 import BackButton from "../../components/layout/BackButton";
 
@@ -20,7 +21,8 @@ const Contracts = () => {
   const [divisionFilter, setDivisionFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
   const [loading, setLoading] = useState(true);
-
+const [showNotifications, setShowNotifications] = useState(false);
+const notificationRef = useRef(null);
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
@@ -95,8 +97,53 @@ const Contracts = () => {
     return Math.min(100, Math.max(0, Math.round(percentage)));
   };
 
+
+
+
   const contractPeriods = contracts.map((c) => c.fileno).filter(Boolean);
   const matchedBills = bills.filter((bill) => contractPeriods.includes(bill.fileno));
+
+
+
+  const contractNotifications = contracts
+    .filter((contract) => contract.status === "Active")
+
+  .map((contract) => {
+    const billAmount = matchedBills
+      .filter((bill) => bill.fileno === contract.fileno)
+      .reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
+
+    const percentage = getCompletionPercentage(
+      billAmount,
+      Number(contract.contractvalue || 0)
+    );
+
+    return {
+      fileno: contract.fileno,
+      contractNumber: contract.contractNumber,
+      percentage,
+    };
+  })
+  .filter((item) => item.percentage >= 100);
+
+
+
+  useEffect(() => {
+  function handleClickOutside(event) {
+    if (
+      notificationRef.current &&
+      !notificationRef.current.contains(event.target)
+    ) {
+      setShowNotifications(false);
+    }
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   // Extract unique divisions dynamically from current dataset for the filter menu
   const uniqueDivisions = Array.from(
@@ -138,6 +185,18 @@ const Contracts = () => {
   const currentDisplayedContracts = sortedContracts.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(sortedContracts.length / itemsPerPage);
 
+
+
+
+  const statusClasses = {
+  Active: "bg-white text-green-900",
+  Completed: "bg-blue-300 text-blue-900",
+  Closed: "bg-red-300 text-red-900",
+  Pending: "bg-yellow-300 text-yellow-900",
+};
+
+
+
   if (loading) {
     return (
       <Layout>
@@ -155,6 +214,7 @@ const Contracts = () => {
 
   return (
     <Layout title="Contract & Bill Management - Manager">
+      
       <div className="flex flex-col lg:flex-row bg-gray-100 min-h-screen">
         <main className="flex-1 p-4 lg:p-6">
           <BackButton />
@@ -162,6 +222,139 @@ const Contracts = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Contract Dashboard</h1>
           </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+      
+
+  {/* Total */}
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+    <div className="absolute -right-5 -top-5 opacity-20">
+      <FaFolderOpen size={80} />
+    </div>
+
+    <p className="text-sm font-medium opacity-90">Total Contracts</p>
+    <h2 className="text-4xl font-bold mt-2">{contracts.length}</h2>
+    <p className="text-xs mt-3 opacity-80">All registered contracts</p>
+  </div>
+
+
+  {/* Active */}
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+    <div className="absolute -right-5 -top-5 opacity-20">
+      <FaCheckCircle size={80} />
+    </div>
+
+    <p className="text-sm font-medium opacity-90">Active Contracts</p>
+    <h2 className="text-4xl font-bold mt-2">
+      {contracts.filter(c => c.status === "Active").length}
+    </h2>
+    <p className="text-xs mt-3 opacity-80">Currently running</p>
+  </div>
+
+  {/* Completed */}
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+    <div className="absolute -right-5 -top-5 opacity-20">
+      <FaClipboardCheck size={80} />
+    </div>
+
+    <p className="text-sm font-medium opacity-90">Completed</p>
+    <h2 className="text-4xl font-bold mt-2">
+      {contracts.filter(c => c.status === "Completed").length}
+    </h2>
+    <p className="text-xs mt-3 opacity-80">Successfully finished</p>
+  </div>
+
+  {/* Closed */}
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+    <div className="absolute -right-5 -top-5 opacity-20">
+      <FaTimesCircle size={80} />
+    </div>
+
+    <p className="text-sm font-medium opacity-90">Closed Contracts</p>
+    <h2 className="text-4xl font-bold mt-2">
+      {contracts.filter(c => c.status === "Closed").length}
+    </h2>
+    <p className="text-xs mt-3 opacity-80">No longer active</p>
+  </div>
+
+
+
+</div>
+
+
+<div className="flex justify-end mb-4">
+  <div className="relative" ref={notificationRef}>
+    <button
+      onClick={() => setShowNotifications((prev) => !prev)}
+      className="relative flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md border hover:bg-gray-100 transition"
+    >
+      <FaBell className="text-xl text-gray-700" />
+
+      {contractNotifications.length > 0 && (
+        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          {contractNotifications.length}
+        </span>
+      )}
+    </button>
+
+    {showNotifications && (
+      <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 bg-blue-600 text-white">
+          <h3 className="font-semibold text-lg">
+            Notifications
+          </h3>
+
+          <span className="bg-white text-blue-600 px-2 py-1 rounded-full text-xs font-bold">
+            {contractNotifications.length}
+          </span>
+        </div>
+
+        {/* Body */}
+        {contractNotifications.length === 0 ? (
+          <div className="py-10 text-center text-gray-500">
+            🎉 No notifications
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+
+            {contractNotifications.map((item) => (
+              <div
+                key={item.fileno}
+                className="flex items-start gap-3 px-5 py-4 border-b last:border-b-0 hover:bg-gray-50 transition"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  🔔
+                </div>
+
+                <div className="flex-1">
+                  <h4 className="font-semibold text-purple-700">
+                    {item.fileno} {item.contractNumber && `- ${item.contractNumber}`}
+                  </h4>
+
+                  <p className="text-sm text-gray-600 mt-1">
+                    Contract amount reached{" "}
+                    <span className="font-bold text-red-600">
+                      100%
+                    </span>.
+                  </p>
+                </div>
+              </div>
+            ))}
+
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-5 py-3 bg-gray-50 text-center text-xs text-gray-500">
+          Total Notifications: {contractNotifications.length}
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+
 
           {/* Action Row: Search, Filter & Sort */}
           <div className="flex flex-col md:flex-row gap-3 mb-6">
@@ -267,11 +460,15 @@ const Contracts = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {currentDisplayedContracts.map((contract) => (
-                      <tr
-                        key={contract._id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/dashboard/manager/bills/${contract.fileno}`)}
-                      >
+
+                  <tr
+  key={contract._id}
+  className={` transition-colors cursor-pointer ${
+    statusClasses[contract.status]  || "bg-slate-200 text-slate-800"
+  }`}
+  onClick={() => navigate(`/dashboard/manager/bills/${contract.fileno}`)}
+
+>
                         <td className="px-4 py-3 border-r font-semibold text-purple-700">
                           {contract.fileno || "N/A"}
                         </td>
@@ -357,15 +554,7 @@ const Contracts = () => {
                           })()}
                         </td>
                         <td
-                          className={`px-4 py-3 text-center font-bold ${
-                            contract.status === "Active"
-                              ? "bg-green-300 text-green-900"
-                              : contract.status === "Completed"
-                              ? "bg-blue-300 text-blue-900"
-                              : contract.status === "Closed"
-                              ? "bg-red-300 text-red-900"
-                              : "bg-slate-200 text-slate-800"
-                          }`}
+                          className={`px-4 py-3 text-center font-bold`}
                         >
                           {contract.status || "N/A"}
                         </td>

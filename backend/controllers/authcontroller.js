@@ -259,8 +259,8 @@ export const updatePassword = async (req, res) => {
   
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: "smtp.gmail.com",
+    service: 'smtpout.secureserver.net',
+    host: "smtpout.secureserver.net",
     port:587, //465 true
     secure:false, // You can change this to your email service provider
     auth: {

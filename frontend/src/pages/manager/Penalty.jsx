@@ -96,10 +96,17 @@ const Penalty = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, auth?.user]);
 
-  const formatDate = (date) => {
-    if (!date) return "-";
-    return new Date(date).toLocaleDateString("en-GB").replace(/\//g, "-");
-  };
+const formatDate = (date) => {
+  if (!date) return "-";
+
+  const parsedDate = new Date(date);
+
+  if (isNaN(parsedDate.getTime())) {
+    return date; // Return the original text instead of "Invalid Date"
+  }
+
+  return parsedDate.toLocaleDateString("en-GB").replace(/\//g, "-");
+};
 
   const formatCurrency = (num) => {
     if (num === undefined || num === null || isNaN(num)) return "-";
@@ -188,16 +195,54 @@ const Penalty = () => {
     return result;
   }, [bills, contractsMap, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate]);
 
-    const contractFilteredBills = useMemo(() => {
-    if (contractTab === "All") return filteredAndSortedBills;
-  
-    return filteredAndSortedBills.filter((bill) => {
+const contractFilteredBills = useMemo(() => {
+  let result = [...filteredAndSortedBills];
+
+  // Contract Status Filter
+  if (contractTab !== "All") {
+    result = result.filter((bill) => {
       const contract = contractsMap[bill.fileno] || {};
+
       return (
-        (contract.status || "").toLowerCase() === contractTab.toLowerCase()
+        (contract.status || "").toLowerCase() ===
+        contractTab.toLowerCase()
       );
     });
-  }, [filteredAndSortedBills, contractsMap, contractTab]);
+  }
+
+  // Contract Penalty Filter
+  if (viewModeFilter !== "All") {
+    result = result.filter((bill) => {
+      const contract = contractsMap[bill.fileno] || {};
+
+      const contractValue = Number(contract.contractvalue) || 0;
+
+      const totalPenalty = filteredAndSortedBills
+        .filter((b) => b.fileno === bill.fileno)
+        .reduce((sum, b) => sum + (Number(b.penalty) || 0), 0);
+
+      const penaltyPercent =
+        contractValue > 0
+          ? (totalPenalty / contractValue) * 100
+          : 0;
+
+      if (viewModeFilter === "HighContractPenalty")
+        return penaltyPercent > 4;
+
+      if (viewModeFilter === "LowContractPenalty")
+        return penaltyPercent <= 4;
+
+      return true;
+    });
+  }
+
+  return result;
+}, [
+  filteredAndSortedBills,
+  contractsMap,
+  contractTab,
+  viewModeFilter,
+]);
   
 
 
@@ -243,13 +288,13 @@ const categorizedBills = useMemo(() => {
   // Client-Side Excel Workbook Builder function
   const handleExportExcel = () => {
     try {
-      if (filteredAndSortedBills.length === 0) {
+      if (contractFilteredBills.length === 0) {
         toast.warning("No data matching applied filters to export.");
         return;
       }
 
       // Format flat tracking structures for cleaner row distribution
-      const exportRows = filteredAndSortedBills.map((bill) => {
+      const exportRows = contractFilteredBills.map((bill) => {
         const contract = contractsMap[bill.fileno] || {};
         const gross = Number(bill.netamount) || 0;
         const penaltyAmt = Number(bill.penalty) || 0;
@@ -352,7 +397,7 @@ const categorizedBills = useMemo(() => {
                     className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition-all cursor-pointer"
                   >
                     <FaFileDownload size={13} />
-                    <span>Download Excel ({filteredAndSortedBills.length})</span>
+                    <span>Download Excel ({contractFilteredBills.length})</span>
                   </button>
 
                   {/* Scope View Mode (Bill-wise vs Contract-wise focuses) */}

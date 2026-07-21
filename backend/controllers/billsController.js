@@ -225,10 +225,10 @@ export const searchbillController = async (req, res) => {
 
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+       service: 'smtpout.secureserver.net',
     host: "smtpout.secureserver.net",
     port:587, //465 true
-    secure:false, // You can change this to your email service provider
+    secure:false,// You can change this to your email service provider
     auth: {
       user: process.env.EMAIL_USER, // Your email address from the environment variables
       pass: process.env.EMAIL_PASS, // Your email password or app password
@@ -319,7 +319,7 @@ const formatCurrency = (amount) => {
 
         const mailOptions = {
           from: { name: 'Tharu & Sons', address: process.env.EMAIL_USER },
-          to: "ayalurajith@gmail.com",
+          to: "info@tharuandsons.in",
           subject: `E-Invoice Notification - Bill No: ${bill.billno}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">

@@ -109,15 +109,29 @@ const BillHistory = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, auth?.user]);
 
-  const formatDate = (date) => {
-    if (!date) return "-";
-    return new Date(date).toLocaleDateString("en-GB").replace(/\//g, "-");
-  };
+const formatDate = (date) => {
+  if (!date) return "-";
 
-  const formatToInputDate = (dateString) => {
-    if (!dateString) return "";
-    return new Date(dateString).toISOString().split('T')[0];
-  };
+  const d = new Date(date);
+
+  if (isNaN(d.getTime())) {
+    return "-";
+  }
+
+  return d.toLocaleDateString("en-GB").replace(/\//g, "-");
+};
+
+const formatToInputDate = (dateString) => {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+
+  if (isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().split("T")[0];
+};
 
   const formatCurrency = (num) => {
     if (num === undefined || num === null || isNaN(num)) return "-";
@@ -242,12 +256,12 @@ const orderedFileNos = useMemo(() => {
 
 const handleExportExcel = () => {
   try {
-    if (filteredAndSortedBills.length === 0) {
+    if (contractFilteredBills.length === 0) {
       toast.warning("No data matching applied filters to export.");
       return;
     }
 
-    const sortedBillsForExport = [...filteredAndSortedBills].sort((a, b) => {
+    const sortedBillsForExport = [...contractFilteredBills].sort((a, b) => {
       const fileA = String(a.fileno || "").trim();
       const fileB = String(b.fileno || "").trim();
       return fileA.localeCompare(fileB, undefined, { numeric: true, sensitivity: 'base' });
@@ -265,29 +279,36 @@ const handleExportExcel = () => {
       return val;
     };
 
-    const exportRows = sortedBillsForExport.map((bill) => {
-      const contract = contractsMap[bill.fileno] || {};
-      const gross = Number(bill.netamount) || 0;
-      const penaltyAmt = Number(bill.penalty) || 0;
-      const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
+  const exportRows = sortedBillsForExport.map((bill) => {
+  const gross = Number(bill.netamount || 0);
+  const penalty = Number(bill.penalty || 0);
 
-      const formattedBill = {};
-      Object.keys(bill).forEach((key) => {
-        formattedBill[key] = formatIfDate(bill[key], key);
-      });
+  return {
+    "File No": bill.fileno,
+    "Bill No": bill.billno,
+    "E-Invoice Date": formatIfDate(bill.einvoicedate, "date"),
+    "Bill From": formatIfDate(bill.billfrom, "date"),
+    "Bill To": formatIfDate(bill.billto, "date"),
 
-      const formattedContract = {};
-      Object.keys(contract).forEach((key) => {
-        formattedContract[`Contract_${key}`] = contract[key] ?? "-";
-      });
+    "Net Amount": bill.netamount,
+    "GST": bill.gst,
+    "Total Amount": bill.totalamount,
 
-      return {
-        ...formattedBill,
-        "Penalty Levied (₹)": penaltyAmt,
-        "Penalty %": `${calculatedPercentage}%`,
-        ...formattedContract
-      };
-    });
+    "Amount Passed": bill.amountpssd,
+    "Passed Date": formatIfDate(bill.billpassdt, "date"),
+
+    "TDS": bill.tds,
+    "GST TDS": bill.gsttds,
+    "CC": bill.cc,
+    "SD": bill.sd,
+    "ESI/PF Penalty": bill.esi_pfpenalty,
+    "Penalty": bill.penalty,
+    "Others": bill.others,
+
+    "Status": bill.status,
+    "Penalty %": gross ? ((penalty / gross) * 100).toFixed(2) + "%" : "0%"
+  };
+});
 
     const worksheet = XLSX.utils.json_to_sheet(exportRows);
     const workbook = XLSX.utils.book_new();
@@ -494,7 +515,7 @@ const formatIndianCurrency = (amount) => {
                     className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition-all cursor-pointer"
                   >
                     <FaFileDownload size={13} />
-                    <span>Download Excel ({filteredAndSortedBills.length})</span>
+                    <span>Download Excel ({contractFilteredBills.length})</span>
                   </button>
 
                   {/* Division Filter Dropdown */}
