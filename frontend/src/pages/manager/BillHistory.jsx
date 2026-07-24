@@ -399,6 +399,43 @@ const formatIndianCurrency = (amount) => {
   return amount.toLocaleString("en-IN");
 };
 
+const getPendingBillStatus = (bills) => {
+  if (!bills || bills.length === 0) return "No Bills";
+
+  // Filter passed bills and sort by billto (latest first)
+  const sortedPassedBills = bills
+    .filter((bill) => bill.status === "PASSED")
+    .sort((a, b) => new Date(b.billto || 0) - new Date(a.billto || 0));
+
+  // The latest bill is now at index 0
+  const lastBill = sortedPassedBills[0] || bills[bills.length - 1];
+
+  const dateStr = lastBill.billto || 0;
+  if (!dateStr) return "No Date Available";
+
+  const lastBillDate = new Date(dateStr);
+  const today = new Date();
+
+  // Format month and year (e.g., "Jul 2019")
+  const lastMonthName = lastBillDate.toLocaleString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+
+  // Calculate pending months
+  const yearDiff = today.getFullYear() - lastBillDate.getFullYear();
+  const monthDiff = today.getMonth() - lastBillDate.getMonth();
+  const pendingMonths = yearDiff * 12 + monthDiff;
+
+  if (pendingMonths <= 0) {
+    return `Last Passed: ${lastMonthName} • Up to date`;
+  }
+
+  return `Last Passed: ${lastMonthName} • ${pendingMonths} ${
+    pendingMonths === 1 ? "Month" : "Months"
+  } Pending`;
+};
+
   return (
     <Layout title="Bill History Categorized - Manager">
       <div className="flex flex-col bg-slate-50 min-h-screen font-sans">
@@ -636,6 +673,8 @@ const formatIndianCurrency = (amount) => {
                   return acc;
                 }, { totalamount: 0, gst: 0, grossTotal: 0, netamount: 0, amountpssd: 0, tds: 0, gsttds: 0, cc: 0, sd: 0, esi_pfpenalty: 0, penalty: 0, others: 0 });
 
+
+
                 return (
                   <div key={fileno} className="mb-10 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                     <div className="bg-slate-100 px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -655,11 +694,18 @@ const formatIndianCurrency = (amount) => {
                             {currentContract.status || "N/A"}
                           </span>
                         </div>
+                       
                       </div>
                       <div>
                         <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full">
                           {contractBills.length} {contractBills.length === 1 ? "Bill Viewable" : "Bills Viewable"}
                         </span>
+
+                         <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full">
+  {currentContract?.status === "Active"
+    ? getPendingBillStatus(contractBills)
+    : ""}
+</span>
                       </div>
                     </div>
 
