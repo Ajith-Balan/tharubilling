@@ -29,10 +29,11 @@ const Contracts = () => {
   const [bills, setBills] = useState([]);
   const navigate = useNavigate();
 
-  // Search, Filter, & Sort States
+  // Search, Filter, & Sort States - Defaulted to showing latest contracts first
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [divisionFilter, setDivisionFilter] = useState("All");
+  const [subFilter, setSubFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -54,8 +55,9 @@ const Contracts = () => {
       const res = await axios.get(
         `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`
       );
+      // Sort by startdate (newest contract first) as default
       const sortedContracts = (res.data.contracts || []).sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        (a, b) => new Date(b.startdate || 0) - new Date(a.startdate || 0)
       );
       setContracts(sortedContracts);
     } catch (err) {
@@ -161,18 +163,21 @@ const Contracts = () => {
 
   // 1. Apply Filtering Matrix (Status, Division & Text Search)
   const filteredContracts = contracts.filter((contract) => {
-    // Dropdown Status Filter
     if (
       statusFilter !== "All" &&
-      contract.status?.toLowerCase() !== statusFilter.toLowerCase()
+      contract.status?.toLowerCase() !== statusFilter.toLowerCase() 
     ) {
       return false;
     }
-    // Dynamic Division Filter
+    if (
+      subFilter !== "All" &&
+      contract.owner?.toLowerCase() !== subFilter.toLowerCase() 
+    ) {
+      return false;
+    }
     if (divisionFilter !== "All" && contract.division !== divisionFilter) {
       return false;
     }
-    // Client-side fallback text filter layer
     const searchLower = searchTerm.toLowerCase();
     return (
       (contract.fileno?.toLowerCase() || "").includes(searchLower) ||
@@ -182,7 +187,7 @@ const Contracts = () => {
     );
   });
 
-  // 2. Apply Sorting Matrix
+  // 2. Apply Sorting Matrix (Default newest contract date first)
   const sortedContracts = [...filteredContracts].sort((a, b) => {
     if (sortBy === "date-desc")
       return new Date(b.startdate || 0) - new Date(a.startdate || 0);
@@ -211,6 +216,13 @@ const Contracts = () => {
     Pending: "bg-yellow-300 text-yellow-900",
   };
 
+  const statusBadge = {
+    Active: "bg-green-100 text-green-800 border-green-300",
+    Completed: "bg-blue-100 text-blue-800 border-blue-300",
+    Closed: "bg-red-100 text-red-800 border-red-300",
+    Pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  };
+
   // Export Filtered Contracts to Excel function
   const exportToExcel = () => {
     if (sortedContracts.length === 0) {
@@ -220,10 +232,6 @@ const Contracts = () => {
 
     const exportData = sortedContracts.map((c) => {
       const contractBills = matchedBills.filter((b) => b.fileno === c.fileno);
-      const totalBilled = contractBills.reduce(
-        (sum, b) => sum + (Number(b.totalamount) || 0),
-        0
-      );
       const totalPenalty = contractBills.reduce(
         (sum, b) => sum + (Number(b.penalty) || 0),
         0
@@ -240,6 +248,7 @@ const Contracts = () => {
         "Total Penalty (₹)": totalPenalty,
         "Start Date": formatDate(c.startdate),
         "End Date": formatDate(c.enddate),
+        "Extended Date": c.extension ? formatDate(c.extension) : "N/A",
         Status: c.status || "N/A",
       };
     });
@@ -269,7 +278,7 @@ const Contracts = () => {
   return (
     <Layout title="Contract & Bill Management - Manager">
       <div className="flex flex-col lg:flex-row bg-gray-100 min-h-screen">
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <BackButton />
 
           {/* Header */}
@@ -278,65 +287,60 @@ const Contracts = () => {
               Contract Dashboard
             </h1>
 
-            {/* Excel Export Button with Count */}
             <button
               onClick={exportToExcel}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-semibold shadow transition duration-200"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-semibold shadow transition duration-200 text-sm"
             >
               <FaFileExcel className="text-lg" />
               <span>Export Excel ({sortedContracts.length})</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 mb-8">
             {/* Total */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
               <div className="absolute -right-5 -top-5 opacity-20">
                 <FaFolderOpen size={80} />
               </div>
-
-              <p className="text-sm font-medium opacity-90">Total Contracts</p>
-              <h2 className="text-4xl font-bold mt-2">{contracts.length}</h2>
-              <p className="text-xs mt-3 opacity-80">All registered contracts</p>
+              <p className="text-xs sm:text-sm font-medium opacity-90">Total Contracts</p>
+              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">{contracts.length}</h2>
+              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">All registered</p>
             </div>
 
             {/* Active */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
               <div className="absolute -right-5 -top-5 opacity-20">
                 <FaCheckCircle size={80} />
               </div>
-
-              <p className="text-sm font-medium opacity-90">Active Contracts</p>
-              <h2 className="text-4xl font-bold mt-2">
+              <p className="text-xs sm:text-sm font-medium opacity-90">Active</p>
+              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
                 {contracts.filter((c) => c.status === "Active").length}
               </h2>
-              <p className="text-xs mt-3 opacity-80">Currently running</p>
+              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Currently running</p>
             </div>
 
             {/* Completed */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
               <div className="absolute -right-5 -top-5 opacity-20">
                 <FaClipboardCheck size={80} />
               </div>
-
-              <p className="text-sm font-medium opacity-90">Completed</p>
-              <h2 className="text-4xl font-bold mt-2">
+              <p className="text-xs sm:text-sm font-medium opacity-90">Completed</p>
+              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
                 {contracts.filter((c) => c.status === "Completed").length}
               </h2>
-              <p className="text-xs mt-3 opacity-80">Successfully finished</p>
+              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Finished</p>
             </div>
 
             {/* Closed */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
               <div className="absolute -right-5 -top-5 opacity-20">
                 <FaTimesCircle size={80} />
               </div>
-
-              <p className="text-sm font-medium opacity-90">Closed Contracts</p>
-              <h2 className="text-4xl font-bold mt-2">
+              <p className="text-xs sm:text-sm font-medium opacity-90">Closed</p>
+              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
                 {contracts.filter((c) => c.status === "Closed").length}
               </h2>
-              <p className="text-xs mt-3 opacity-80">No longer active</p>
+              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Inactive</p>
             </div>
           </div>
 
@@ -344,10 +348,9 @@ const Contracts = () => {
             <div className="relative" ref={notificationRef}>
               <button
                 onClick={() => setShowNotifications((prev) => !prev)}
-                className="relative flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md border hover:bg-gray-100 transition"
+                className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md border hover:bg-gray-100 transition"
               >
-                <FaBell className="text-xl text-gray-700" />
-
+                <FaBell className="text-lg sm:text-xl text-gray-700" />
                 {contractNotifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {contractNotifications.length}
@@ -356,17 +359,13 @@ const Contracts = () => {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
-                  {/* Header */}
+                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-4 bg-blue-600 text-white">
                     <h3 className="font-semibold text-lg">Notifications</h3>
-
                     <span className="bg-white text-blue-600 px-2 py-1 rounded-full text-xs font-bold">
                       {contractNotifications.length}
                     </span>
                   </div>
-
-                  {/* Body */}
                   {contractNotifications.length === 0 ? (
                     <div className="py-10 text-center text-gray-500">
                       🎉 No notifications
@@ -381,14 +380,11 @@ const Contracts = () => {
                           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                             🔔
                           </div>
-
                           <div className="flex-1">
                             <h4 className="font-semibold text-purple-700">
                               {item.fileno}{" "}
-                              {item.contractNumber &&
-                                `- ${item.contractNumber}`}
+                              {item.contractNumber && `- ${item.contractNumber}`}
                             </h4>
-
                             <p className="text-sm text-gray-600 mt-1">
                               Contract amount reached{" "}
                               <span className="font-bold text-red-600">
@@ -401,8 +397,6 @@ const Contracts = () => {
                       ))}
                     </div>
                   )}
-
-                  {/* Footer */}
                   <div className="px-5 py-3 bg-gray-50 text-center text-xs text-gray-500">
                     Total Notifications: {contractNotifications.length}
                   </div>
@@ -411,28 +405,28 @@ const Contracts = () => {
             </div>
           </div>
 
-          {/* Action Row: Search, Filter & Sort */}
-          <div className="flex flex-col md:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
+          {/* Search, Filter & Sort Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search contracts (File No, Work Name, Div)..."
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="Search contracts..."
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
               />
             </div>
 
-            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-1.5">
-              <FaBuilding className="text-slate-500 mr-2" />
+            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-2">
+              <FaBuilding className="text-slate-500 mr-2 text-sm" />
               <select
                 value={divisionFilter}
                 onChange={(e) => {
                   setDivisionFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm max-w-[160px]"
+                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer text-sm w-full"
               >
                 <option value="All">All Divisions</option>
                 {uniqueDivisions.map((div) => (
@@ -443,15 +437,15 @@ const Contracts = () => {
               </select>
             </div>
 
-            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-1.5">
-              <FaFilter className="text-slate-500 mr-2" />
+            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-2">
+              <FaFilter className="text-slate-500 mr-2 text-sm" />
               <select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm"
+                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer text-sm w-full"
               >
                 <option value="All">All Statuses</option>
                 <option value="Active">Active</option>
@@ -460,25 +454,42 @@ const Contracts = () => {
               </select>
             </div>
 
-            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-1.5">
-              <FaSortAmountDown className="text-slate-500 mr-2" />
+    
+
+            <div className="relative flex items-center bg-white border border-slate-300 rounded-xl shadow-sm px-3 py-2">
+              <FaSortAmountDown className="text-slate-500 mr-2 text-sm" />
               <select
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer pr-2 text-sm"
+                className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer text-sm w-full"
               >
-                <option value="date-desc">Newest Start Date</option>
-                <option value="date-asc">Oldest Start Date</option>
+                <option value="date-desc">Newest Contract First</option>
+                <option value="date-asc">Oldest Contract First</option>
                 <option value="value-desc">Value: High to Low</option>
                 <option value="value-asc">Value: Low to High</option>
               </select>
             </div>
           </div>
 
-          {/* Table Header Section */}
+{/* <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
+  <input
+    type="checkbox"
+    checked={subFilter === "sub"}
+    onChange={(e) => {
+      setSubFilter(e.target.checked ? "sub" : "All");
+      setCurrentPage(1);
+    }}
+    className="w-4 h-4 accent-blue-600"
+  />
+  <span className="text-xs font-medium text-slate-600">
+    Sub-Contractors
+  </span>
+</label> */}
+
+          {/* Counter Section */}
           <div className="mb-4 flex justify-between items-center">
             <span className="text-sm text-gray-500">
               Showing {sortedContracts.length > 0 ? indexOfFirstItem + 1 : 0}-
@@ -493,41 +504,20 @@ const Contracts = () => {
             </div>
           ) : (
             <div className="mb-8">
-              {/* Desktop view for Contracts */}
+              {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow border border-gray-200">
                 <table className="min-w-full text-sm text-gray-700">
                   <thead className="bg-gray-50 border-b text-gray-800">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        File No
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Division
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Name of Work
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Manager
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Contract Number
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Contract Value
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Penalty
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Started On
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">
-                        Validity / End Date
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold text-center">
-                        Status
-                      </th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">File No</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Division</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Name of Work</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Manager</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Contract Number</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Contract Value</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Penalty</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Validity / Progress</th>
+                      <th className="px-4 py-3 text-center font-semibold">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -535,14 +525,9 @@ const Contracts = () => {
                       <tr
                         key={contract._id}
                         className={`transition-colors cursor-pointer ${
-                          statusClasses[contract.status] ||
-                          "bg-slate-200 text-slate-800"
+                          statusClasses[contract.status] || "bg-slate-200 text-slate-800"
                         }`}
-                        onClick={() =>
-                          navigate(
-                            `/dashboard/manager/bills/${contract.fileno}`
-                          )
-                        }
+                        onClick={() => navigate(`/dashboard/manager/bills/${contract.fileno}`)}
                       >
                         <td className="px-4 py-3 border-r font-semibold text-purple-700">
                           {contract.fileno || "N/A"}
@@ -555,67 +540,35 @@ const Contracts = () => {
                         </td>
                         <td className="px-4 py-3 border-r">
                           <div className="flex text-center flex-col gap-1">
-                            <div>
-                              <p className="font-medium capitalize">
-                                {contract.managername || "N/A"}
-                              </p>
-                            </div>
-                            <div>
+                            <p className="font-medium capitalize">{contract.managername || "N/A"}</p>
+                            {contract.owner && (
                               <p className="capitalize bg-green-500 px-2 text-white text-xs rounded">
-                                {contract.owner || ""}
+                                {contract.owner}
                               </p>
-                            </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 border-r">
                           {contract.contractNumber || "N/A"}
                         </td>
                         <td className="px-4 py-3 border-r">
-                          ₹
-                          {Number(
-                            contract.contractvalue || 0
-                          ).toLocaleString("en-IN")}
+                          ₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}
                         </td>
                         <td className="px-2 py-2 border-r">
                           {(() => {
-                            const contractValue = Number(
-                              contract.contractvalue || 0
-                            );
-                            const bills = matchedBills.filter(
-                              (b) => b.fileno === contract.fileno
-                            );
-                            const penalty = bills.reduce(
-                              (sum, bill) => sum + Number(bill.penalty || 0),
-                              0
-                            );
+                            const contractValue = Number(contract.contractvalue || 0);
+                            const bills = matchedBills.filter((b) => b.fileno === contract.fileno);
+                            const penalty = bills.reduce((sum, bill) => sum + Number(bill.penalty || 0), 0);
                             const maxPenalty = contractValue * 0.1;
-                            const percentage =
-                              contractValue > 0
-                                ? ((penalty / contractValue) * 100).toFixed(1)
-                                : 0;
+                            const percentage = contractValue > 0 ? ((penalty / contractValue) * 100).toFixed(1) : 0;
                             const isHighPenalty = Number(percentage) > 4;
 
                             return (
-                              <div
-                                className="space-y-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div
-                                  className={`w-full text-center py-1 rounded font-bold text-white ${
-                                    isHighPenalty
-                                      ? "bg-red-600"
-                                      : "bg-orange-500"
-                                  }`}
-                                >
+                              <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+                                <div className={`w-full text-center py-1 rounded font-bold text-white ${isHighPenalty ? "bg-red-600" : "bg-orange-500"}`}>
                                   {percentage}%
                                 </div>
-                                <div
-                                  className={`w-full text-center py-1 rounded font-semibold ${
-                                    isHighPenalty
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-orange-100 text-orange-800"
-                                  }`}
-                                >
+                                <div className={`w-full text-center py-1 rounded font-semibold ${isHighPenalty ? "bg-red-100 text-red-800" : "bg-orange-100 text-orange-800"}`}>
                                   ₹{penalty.toLocaleString("en-IN")}
                                 </div>
                                 <div className="text-xs text-center text-slate-500">
@@ -625,57 +578,43 @@ const Contracts = () => {
                             );
                           })()}
                         </td>
-                        <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold text-purple-700">
-                          {formatDate(contract.startdate) || "N/A"}
-                        </td>
                         <td className="px-4 py-3 border-r">
                           {(() => {
                             const billAmount = matchedBills
-                              .filter(
-                                (bill) => bill.fileno === contract.fileno
-                              )
-                              .reduce(
-                                (sum, bill) =>
-                                  sum + (Number(bill.totalamount) || 0),
-                                0
-                              );
+                              .filter((bill) => bill.fileno === contract.fileno)
+                              .reduce((sum, bill) => sum + (Number(bill.totalamount) || 0), 0);
 
-                            const percentage = getCompletionPercentage(
-                              billAmount,
-                              contract.contractvalue
-                            );
+                            const percentage = getCompletionPercentage(billAmount, contract.contractvalue);
                             let color = "bg-red-500";
                             if (percentage < 25) color = "bg-green-500";
                             else if (percentage < 50) color = "bg-yellow-500";
                             else if (percentage < 75) color = "bg-orange-500";
 
                             return (
-                              <div
-                                className="min-w-[180px]"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <div className="min-w-[180px]" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex justify-between text-xs mb-1">
-                                  <span className="font-medium">
-                                    {formatDate(contract.enddate)}
-                                  </span>
-                                  <span className="font-semibold">
-                                    {percentage}%
-                                  </span>
+                                  <span className="font-medium">{formatDate(contract.enddate)}</span>
+                                  <span className="font-semibold">{percentage}%</span>
                                 </div>
                                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full ${color} transition-all duration-500`}
-                                    style={{ width: `${percentage}%` }}
-                                  />
+                                  <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${percentage}%` }} />
                                 </div>
-                                <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                  ₹{billAmount.toLocaleString("en-IN")}
-                                </span>
+                                <div className="flex items-center justify-between gap-1 mt-1">
+                                  <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                    ₹{billAmount.toLocaleString("en-IN")}
+                                  </span>
+                                  {/* Extension date only rendered when valid */}
+                                  {contract.extension && (
+                                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                      Ext: {formatDate(contract.extension)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
                         </td>
-                        <td className={`px-4 py-3 text-center font-bold`}>
+                        <td className="px-4 py-3 text-center font-bold">
                           {contract.status || "N/A"}
                         </td>
                       </tr>
@@ -684,66 +623,122 @@ const Contracts = () => {
                 </table>
               </div>
 
-              {/* Mobile View Card System */}
-              <div className="md:hidden space-y-4">
-                {currentDisplayedContracts.map((contract) => (
-                  <div
-                    key={contract._id}
-                    className="bg-white rounded-xl shadow border border-gray-200 p-4 cursor-pointer"
-                    onClick={() =>
-                      navigate(`/dashboard/manager/bills/${contract.fileno}`)
-                    }
-                  >
-                    <h3 className="font-bold text-purple-700 mb-2">
-                      {contract.fileno || "N/A"}
-                    </h3>
-                    <p>
-                      <span className="font-semibold">Division:</span>{" "}
-                      {contract.division || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Work:</span>{" "}
-                      {contract.workname || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Contract No:</span>{" "}
-                      {contract.contractNumber || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Value:</span> ₹
-                      {Number(
-                        contract.contractvalue || 0
-                      ).toLocaleString("en-IN")}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Status:</span>{" "}
-                      {contract.status || "N/A"}
-                    </p>
-                  </div>
-                ))}
+              {/* Mobile View: Clean 2-Column Responsive Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 md:hidden">
+                {currentDisplayedContracts.map((contract) => {
+                  const billAmount = matchedBills
+                    .filter((bill) => bill.fileno === contract.fileno)
+                    .reduce((sum, bill) => sum + (Number(bill.totalamount) || 0), 0);
+
+                  const percentage = getCompletionPercentage(billAmount, contract.contractvalue);
+                  let progressColor = "bg-red-500";
+                  if (percentage < 25) progressColor = "bg-green-500";
+                  else if (percentage < 50) progressColor = "bg-yellow-500";
+                  else if (percentage < 75) progressColor = "bg-orange-500";
+
+                  const contractValue = Number(contract.contractvalue || 0);
+                  const bills = matchedBills.filter((b) => b.fileno === contract.fileno);
+                  const penalty = bills.reduce((sum, bill) => sum + Number(bill.penalty || 0), 0);
+
+                  return (
+                    <div
+                      key={contract._id}
+                      className="bg-white rounded-2xl p-3.5 shadow-sm hover:shadow-md border border-slate-200 active:scale-[0.98] transition cursor-pointer flex flex-col justify-between"
+                      onClick={() => navigate(`/dashboard/manager/bills/${contract.fileno}`)}
+                    >
+                      <div>
+                        {/* Header: File No & Status Badge */}
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                          <span className="font-bold text-purple-700 text-base">
+                            {contract.fileno || "N/A"}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge[contract.status] || "bg-slate-100 text-slate-700 border-slate-200"}`}>
+                            {contract.status || "N/A"}
+                          </span>
+                        </div>
+
+                        {/* Contract Work Title */}
+                        <h4 className="font-semibold text-slate-800 text-xs line-clamp-2 mb-2 capitalize" title={contract.workname}>
+                          {contract.workname || "N/A"}
+                        </h4>
+
+                        {/* Division & Manager details */}
+                        <div className="text-[11px] text-slate-600 space-y-1 mb-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Division:</span>
+                            <span className="font-medium text-slate-700">{contract.division || "N/A"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Manager:</span>
+                            <span className="font-medium text-slate-700 capitalize">{contract.managername || "N/A"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Contract No:</span>
+                            <span className="font-medium text-slate-700">{contract.contractNumber || "N/A"}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar & Amount Billed */}
+                        <div className="mb-3">
+                          <div className="flex justify-between text-[11px] mb-1 font-semibold text-slate-700">
+                            <span>Billed: ₹{billAmount.toLocaleString("en-IN")}</span>
+                            <span className="text-purple-700">{percentage}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${progressColor} transition-all duration-300`} style={{ width: `${percentage}%` }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer Details */}
+                      <div className="pt-2 border-t border-slate-100 text-[11px] space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Value:</span>
+                          <span className="font-bold text-slate-800">
+                            ₹{contractValue.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+
+                        {penalty > 0 && (
+                          <div className="flex justify-between items-center text-red-600">
+                            <span>Penalty:</span>
+                            <span className="font-bold">₹{penalty.toLocaleString("en-IN")}</span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-slate-500">
+                          <span>End Date:</span>
+                          <span>{formatDate(contract.enddate)}</span>
+                        </div>
+
+                        {/* Extension Date conditionally displayed only if valid */}
+                        {contract.extension && (
+                          <div className="flex justify-between items-center text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            <span>Extension:</span>
+                            <span>{formatDate(contract.extension)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Pagination Component */}
+              {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-xl shadow border border-gray-200">
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
                     className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm"
                   >
                     Previous
                   </button>
                   <span className="text-sm font-medium text-slate-600">
-                    Page{" "}
-                    <strong className="text-slate-900">{currentPage}</strong>{" "}
-                    of {totalPages}
+                    Page <strong className="text-slate-900">{currentPage}</strong> of {totalPages}
                   </span>
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                    }
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
                     className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm"
                   >

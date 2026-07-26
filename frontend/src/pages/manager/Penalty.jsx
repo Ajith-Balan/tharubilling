@@ -7,7 +7,8 @@ import AdminMenu from "../../components/layout/AdminMenu";
 import { 
   FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, 
   FaSearch, FaFilter, FaSortAmountDown, FaFolderOpen, FaPercent, 
-  FaCalendarAlt, FaBuilding, FaLayerGroup, FaFileDownload 
+  FaCalendarAlt, FaBuilding, FaLayerGroup, FaFileDownload,
+  FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import BackButton from "../../components/layout/BackButton";
@@ -30,9 +31,9 @@ const Penalty = () => {
   const [endDate, setEndDate] = useState("");
   const [contractTab, setContractTab] = useState("Active");
 
-  // Pagination Configuration
+  // Pagination Configuration (By Contract File Group)
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 100;
+  const itemsPerPage = 10; // Contracts per page
 
   const loadData = async () => {
     try {
@@ -44,7 +45,7 @@ const Penalty = () => {
       ]);
 
       const contracts = (contractsRes.data.contracts || contractsRes.data || []).sort(
-        (a, b) => new Date(b.date || 0) - new Date(a.date || 0)
+        (a, b) => new Date(b.fileno || 0) - new Date(a.fileno || 0)
       );
 
       const mappedContracts = {};
@@ -96,17 +97,12 @@ const Penalty = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, auth?.user]);
 
-const formatDate = (date) => {
-  if (!date) return "-";
-
-  const parsedDate = new Date(date);
-
-  if (isNaN(parsedDate.getTime())) {
-    return date; // Return the original text instead of "Invalid Date"
-  }
-
-  return parsedDate.toLocaleDateString("en-GB").replace(/\//g, "-");
-};
+  const formatDate = (date) => {
+    if (!date) return "-";
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) return date;
+    return parsedDate.toLocaleDateString("en-GB").replace(/\//g, "-");
+  };
 
   const formatCurrency = (num) => {
     if (num === undefined || num === null || isNaN(num)) return "-";
@@ -116,7 +112,6 @@ const formatDate = (date) => {
     }).format(num);
   };
 
-  // Extract unique divisions dynamically from cached contracts for filtering options
   const uniqueDivisions = useMemo(() => {
     const divisions = new Set();
     Object.values(contractsMap).forEach(c => {
@@ -129,7 +124,7 @@ const formatDate = (date) => {
   const filteredAndSortedBills = useMemo(() => {
     let result = [...bills];
 
-    // 1. Client-side Search Matching Fallback
+    // 1. Client-side Search Matching
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
       result = result.filter((bill) =>
@@ -147,7 +142,7 @@ const formatDate = (date) => {
       }
     }
 
-    // 3. Custom E-Invoice Date Range Filter Logic
+    // 3. E-Invoice Date Range Filter
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -159,7 +154,7 @@ const formatDate = (date) => {
       result = result.filter((bill) => bill.einvoicedate && new Date(bill.einvoicedate) <= end);
     }
 
-    // 4. Division Filter Lineage Integration
+    // 4. Division Filter
     if (divisionFilter !== "All") {
       result = result.filter((bill) => {
         const contract = contractsMap[bill.fileno];
@@ -167,7 +162,7 @@ const formatDate = (date) => {
       });
     }
 
-    // 5. Individual Bill Penalty Percentage Filtering Logic
+    // 5. Individual Bill Penalty Percentage Filter
     if (penaltyFilter !== "All") {
       result = result.filter((bill) => {
         const gross = Number(bill.totalamount) || 0;
@@ -183,10 +178,10 @@ const formatDate = (date) => {
       });
     }
 
-    // Sorting Mechanics
+    // Sorting
     result.sort((a, b) => {
-      if (sortBy === "date-desc") return new Date(b.month + "-01") - new Date(a.month + "-01");
-      if (sortBy === "date-asc") return new Date(a.month + "-01") - new Date(b.month + "-01");
+      if (sortBy === "date-desc") return new Date(b.einvoicedate || 0) - new Date(a.einvoicedate || 0);
+      if (sortBy === "date-asc") return new Date(a.einvoicedate || 0) - new Date(b.einvoicedate || 0);
       if (sortBy === "amount-desc") return (b.totalamount || 0) - (a.totalamount || 0);
       if (sortBy === "amount-asc") return (a.totalamount || 0) - (b.totalamount || 0);
       return 0;
@@ -195,60 +190,62 @@ const formatDate = (date) => {
     return result;
   }, [bills, contractsMap, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate]);
 
-const contractFilteredBills = useMemo(() => {
-  let result = [...filteredAndSortedBills];
+  const contractFilteredBills = useMemo(() => {
+    let result = [...filteredAndSortedBills];
 
-  // Contract Status Filter
-  if (contractTab !== "All") {
-    result = result.filter((bill) => {
-      const contract = contractsMap[bill.fileno] || {};
+    // Contract Tab Filter
+    if (contractTab !== "All") {
+      result = result.filter((bill) => {
+        const contract = contractsMap[bill.fileno] || {};
+        return (contract.status || "").toLowerCase() === contractTab.toLowerCase();
+      });
+    }
 
-      return (
-        (contract.status || "").toLowerCase() ===
-        contractTab.toLowerCase()
-      );
+    // Contract-wide Penalty Percentage Filter
+    if (viewModeFilter !== "All") {
+      result = result.filter((bill) => {
+        const contract = contractsMap[bill.fileno] || {};
+        const contractValue = Number(contract.contractvalue) || 0;
+
+        const totalPenalty = filteredAndSortedBills
+          .filter((b) => b.fileno === bill.fileno)
+          .reduce((sum, b) => sum + (Number(b.penalty) || 0), 0);
+
+        const penaltyPercent = contractValue > 0 ? (totalPenalty / contractValue) * 100 : 0;
+
+        if (viewModeFilter === "HighContractPenalty") return penaltyPercent > 4;
+        if (viewModeFilter === "LowContractPenalty") return penaltyPercent <= 4;
+        return true;
+      });
+    }
+
+    return result;
+  }, [filteredAndSortedBills, contractsMap, contractTab, viewModeFilter]);
+
+  // Group all filtered bills by contract file number
+  const groupedBills = useMemo(() => {
+    const groups = {};
+    contractFilteredBills.forEach((bill) => {
+      const key = bill.fileno || "UNASSIGNED";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(bill);
     });
-  }
+    return groups;
+  }, [contractFilteredBills]);
 
-  // Contract Penalty Filter
-  if (viewModeFilter !== "All") {
-    result = result.filter((bill) => {
-      const contract = contractsMap[bill.fileno] || {};
-
-      const contractValue = Number(contract.contractvalue) || 0;
-
-      const totalPenalty = filteredAndSortedBills
-        .filter((b) => b.fileno === bill.fileno)
-        .reduce((sum, b) => sum + (Number(b.penalty) || 0), 0);
-
-      const penaltyPercent =
-        contractValue > 0
-          ? (totalPenalty / contractValue) * 100
-          : 0;
-
-      if (viewModeFilter === "HighContractPenalty")
-        return penaltyPercent > 4;
-
-      if (viewModeFilter === "LowContractPenalty")
-        return penaltyPercent <= 4;
-
-      return true;
+  // Order file numbers systematically
+  const allOrderedFileNos = useMemo(() => {
+    return Object.keys(groupedBills).sort((a, b) => {
+      const contractA = contractsMap[a] || {};
+      const contractB = contractsMap[b] || {};
+      return new Date(contractB.date || 0) - new Date(contractA.date || 0);
     });
-  }
+  }, [groupedBills, contractsMap]);
 
-  return result;
-}, [
-  filteredAndSortedBills,
-  contractsMap,
-  contractTab,
-  viewModeFilter,
-]);
-  
-
-
-const totalPages = useMemo(() => {
-  return Math.ceil(contractFilteredBills.length / itemsPerPage) || 1;
-}, [contractFilteredBills]);
+  // Total pages based on contract bundles count
+  const totalPages = useMemo(() => {
+    return Math.ceil(allOrderedFileNos.length / itemsPerPage) || 1;
+  }, [allOrderedFileNos, itemsPerPage]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -256,36 +253,12 @@ const totalPages = useMemo(() => {
     }
   }, [totalPages, currentPage]);
 
+  // Paginated File Numbers for the current page
+  const paginatedFileNos = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return allOrderedFileNos.slice(startIndex, startIndex + itemsPerPage);
+  }, [allOrderedFileNos, currentPage, itemsPerPage]);
 
-const categorizedBills = useMemo(() => {
-  const groups = {};
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-
-  const paginatedSlice = contractFilteredBills.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
-
-  paginatedSlice.forEach((bill) => {
-    const key = bill.fileno || "UNASSIGNED";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(bill);
-  });
-
-  return groups;
-}, [contractFilteredBills, currentPage]);
-
- const orderedFileNos = useMemo(() => {
-   return Object.keys(categorizedBills).sort((a, b) => {
-     const contractA = contractsMap[a] || {};
-     const contractB = contractsMap[b] || {};
-     return new Date(contractB.fileno || 0) - new Date(contractA.fileno || 0);
-   });
- }, [categorizedBills, contractsMap]);
-
-  // Client-Side Excel Workbook Builder function
   const handleExportExcel = () => {
     try {
       if (contractFilteredBills.length === 0) {
@@ -293,10 +266,9 @@ const categorizedBills = useMemo(() => {
         return;
       }
 
-      // Format flat tracking structures for cleaner row distribution
       const exportRows = contractFilteredBills.map((bill) => {
         const contract = contractsMap[bill.fileno] || {};
-        const gross = Number(bill.netamount) || 0;
+        const gross = Number(bill.totalamount) || 0;
         const penaltyAmt = Number(bill.penalty) || 0;
         const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
 
@@ -304,15 +276,15 @@ const categorizedBills = useMemo(() => {
           "File No": bill.fileno || "N/A",
           "Contract / Work Name": contract.workname || "N/A",
           "Division": contract.division || "N/A",
-          "Project Manager": contract.managerName || "N/A",
+          "Project Manager": contract.managername || "N/A",
           "Contract Value (₹)": contract.contractvalue || 0,
           "Bill Number": bill.billno || "N/A",
-          "E-Invoice Date": bill.einvoicedate ? new Date(bill.einvoicedate).toDateString().split('T')[0] : "-",
-          "Period From": bill.billfrom ? new Date(bill.billfrom).toDateString().split('T')[0] : "-",
-          "Period To": bill.billto ? new Date(bill.billto).toDateString().split('T')[0] : "-",
+          "E-Invoice Date": bill.einvoicedate ? new Date(bill.einvoicedate).toISOString().split('T')[0] : "-",
+          "Period From": bill.billfrom ? new Date(bill.billfrom).toISOString().split('T')[0] : "-",
+          "Period To": bill.billto ? new Date(bill.billto).toISOString().split('T')[0] : "-",
           "Gross Amount (₹)": bill.totalamount || 0,
           "Amount Passed (₹)": bill.amountpssd || 0,
-          "Passed Date": bill.billpassdt ? new Date(bill.billpassdt).toDateString().split('T')[0] : "-",
+          "Passed Date": bill.billpassdt ? new Date(bill.billpassdt).toISOString().split('T')[0] : "-",
           "Penalty Levied (₹)": penaltyAmt,
           "Penalty %": `${calculatedPercentage}%`,
           "Bill Status": bill.status || "Processing"
@@ -323,14 +295,12 @@ const categorizedBills = useMemo(() => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
 
-      // Auto-fit Column configurations dynamically
       const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
-        wch: Math.max(key.length, ...exportRows.map(row => String(row[key]).length)) + 3
+        wch: Math.max(key.length, ...exportRows.map(row => String(row[key] || "").length)) + 3
       }));
       worksheet["!cols"] = colWidths;
 
-      // Trigger standard browser download pipeline
-      XLSX.writeFile(workbook, `Contract_Penalty_Report_${new Date().toDateString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(workbook, `Contract_Penalty_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
       toast.success("Excel ledger file generated successfully!");
     } catch (err) {
       console.error("Export failure: ", err);
@@ -368,7 +338,7 @@ const categorizedBills = useMemo(() => {
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between sm:col-span-2 lg:col-span-1">
                 <span className="text-sm font-medium text-slate-500">Active Contract Ledgers</span>
                 <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                  {orderedFileNos.length} Bundles Listed
+                  {allOrderedFileNos.length} Bundles Listed
                 </span>
               </div>
             </div>
@@ -390,7 +360,6 @@ const categorizedBills = useMemo(() => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* CLIENT-SIDE EXCEL EXPORT BUTTON */}
                   <button
                     onClick={handleExportExcel}
                     disabled={filteredAndSortedBills.length === 0}
@@ -400,7 +369,6 @@ const categorizedBills = useMemo(() => {
                     <span>Download Excel ({contractFilteredBills.length})</span>
                   </button>
 
-                  {/* Scope View Mode (Bill-wise vs Contract-wise focuses) */}
                   <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
                     <FaLayerGroup size={11} className="text-slate-400" />
                     <select
@@ -414,7 +382,6 @@ const categorizedBills = useMemo(() => {
                     </select>
                   </div>
 
-                  {/* Division Selection Dropdown */}
                   <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
                     <FaBuilding size={11} className="text-slate-400" />
                     <select
@@ -429,7 +396,6 @@ const categorizedBills = useMemo(() => {
                     </select>
                   </div>
 
-                  {/* Individual Item Penalty Filter */}
                   <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
                     <FaPercent size={11} className="text-slate-400" />
                     <select
@@ -510,10 +476,10 @@ const categorizedBills = useMemo(() => {
 
             {/* CONTRACT STATUS TABS */}
             <div className="flex gap-2 mb-6">
-              {["All", "Active", "Closed","Completed"].map((tab) => (
+              {["All", "Active", "Closed", "Completed"].map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setContractTab(tab)}
+                  onClick={() => { setContractTab(tab); setCurrentPage(1); }}
                   className={`px-5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
                     contractTab === tab ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
                   }`}
@@ -524,16 +490,16 @@ const categorizedBills = useMemo(() => {
             </div>
 
             {/* WORKBOOK BUNDLES GRID */}
-            {orderedFileNos.length === 0 ? (
+            {paginatedFileNos.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
                 <p className="text-slate-400 font-medium">No ledger accounts or bill items match your adjustments.</p>
               </div>
             ) : (
-              orderedFileNos.map((fileno) => {
+              paginatedFileNos.map((fileno) => {
                 const currentContract = contractsMap[fileno] || {};
-                const contractBills = categorizedBills[fileno];
+                const contractBills = groupedBills[fileno] || [];
 
-                // Calculations across parent structure
+                // Contract Level Correct Calculations
                 const contractValue = Number(currentContract.contractvalue || 0);
                 const totalAccumulatedPenalty = contractBills.reduce((sum, b) => sum + (Number(b.penalty) || 0), 0);
                 const contractPenaltyPercentage = contractValue > 0 ? ((totalAccumulatedPenalty / contractValue) * 100).toFixed(1) : "0.0";
@@ -552,7 +518,6 @@ const categorizedBills = useMemo(() => {
 
                 return (
                   <div key={fileno} className="mb-10 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                    {/* Header with explicit live breakdown of contract context metrics */}
                     <div className="bg-slate-100 px-5 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex items-start space-x-3 flex-1">
                         <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg mt-1">
@@ -573,7 +538,6 @@ const categorizedBills = useMemo(() => {
                             </span>
                           </div>
 
-                          {/* Contract & Manager Meta Details */}
                           <div className="text-xs text-slate-500 font-mono flex flex-wrap gap-x-4 gap-y-1">
                             <span>File No: <strong className="text-slate-700">{fileno}</strong></span>
                             {contractValue > 0 && (
@@ -583,13 +547,12 @@ const categorizedBills = useMemo(() => {
                               <span>Manager: <strong className="text-slate-700">{currentContract.managername}</strong></span>
                             )}
                             {currentContract.managerphone && (
-                              <span>Phone: <strong className="text-slate-700">{currentContract.managerphone || "123456789"}</strong></span>
+                              <span>Phone: <strong className="text-slate-700">{currentContract.managerphone}</strong></span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Side metrics detailing live calculations */}
                       <div className="flex flex-wrap items-center gap-3 bg-white p-2.5 rounded-lg border border-slate-200 shadow-inner">
                         <div className="text-center px-2">
                           <span className="block text-[9px] uppercase font-bold text-slate-400">Total Penalty</span>
@@ -610,7 +573,6 @@ const categorizedBills = useMemo(() => {
                       </div>
                     </div>
 
-                    {/* Desktop View Table */}
                     <div className="hidden xl:block overflow-x-auto">
                       <table className="min-w-full text-[11px] font-medium text-slate-700 border-collapse">
                         <thead>
@@ -628,7 +590,7 @@ const categorizedBills = useMemo(() => {
                         </thead>
                         <tbody className="divide-y divide-slate-200 font-mono text-slate-800">
                           {contractBills.map((bill) => {
-                            const gross = Number(bill.netamount) || 0;
+                            const gross = Number(bill.totalamount) || 0;
                             const penaltyAmt = Number(bill.penalty) || 0;
                             const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
 
@@ -679,7 +641,7 @@ const categorizedBills = useMemo(() => {
                           <div key={bill._id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm font-sans text-xs">
                             <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
                               <span className="font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded">Bill #{bill.billno || "N/A"}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "Bill Passed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{bill.status || "Processing"}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{bill.status || "Processing"}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 font-mono">
                               <div><span className="text-slate-400 font-sans text-[11px] block">E-Invoice Date:</span><span>{formatDate(bill.einvoicedate)}</span></div>
@@ -702,31 +664,82 @@ const categorizedBills = useMemo(() => {
               })
             )}
 
-            {/* Pagination Component */}
+            {/* BILL HISTORY COMPONENT STYLE PAGINATION */}
             {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-xl shadow border border-slate-200">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm cursor-pointer"
-                >
-                  Previous
-                </button>
-                <span className="text-sm font-medium text-slate-600">Page <strong className="text-slate-900">{currentPage}</strong> of {totalPages}</span>
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm cursor-pointer"
-                >
-                  Next
-                </button>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white p-4 rounded-xl shadow border border-slate-200 text-xs text-slate-600">
+                <div className="font-medium text-slate-500">
+                  Showing <strong className="text-slate-800">{((currentPage - 1) * itemsPerPage) + 1}</strong> to <strong className="text-slate-800">{Math.min(currentPage * itemsPerPage, allOrderedFileNos.length)}</strong> of <strong className="text-slate-800">{allOrderedFileNos.length}</strong> contract ledgers
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  {/* First Page */}
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-600 cursor-pointer"
+                    title="First Page"
+                  >
+                    <FaAngleDoubleLeft size={12} />
+                  </button>
+
+                  {/* Previous Page */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-600 cursor-pointer"
+                    title="Previous Page"
+                  >
+                    <FaChevronLeft size={12} />
+                  </button>
+
+                  {/* Page Numbers */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2))
+                    .map((page, index, array) => {
+                      const showEllipsisBefore = index > 0 && page - array[index - 1] > 1;
+                      return (
+                        <React.Fragment key={page}>
+                          {showEllipsisBefore && <span className="px-2 text-slate-400">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1.5 rounded font-bold transition cursor-pointer ${
+                              currentPage === page
+                                ? "bg-indigo-600 text-white shadow-sm"
+                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+
+                  {/* Next Page */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-600 cursor-pointer"
+                    title="Next Page"
+                  >
+                    <FaChevronRight size={12} />
+                  </button>
+
+                  {/* Last Page */}
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-600 cursor-pointer"
+                    title="Last Page"
+                  >
+                    <FaAngleDoubleRight size={12} />
+                  </button>
+                </div>
               </div>
             )}
           </main>
         )}
       </div>
     </Layout>
-
   );
 };
 

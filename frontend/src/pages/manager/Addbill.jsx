@@ -9,7 +9,8 @@ const Addbill = () => {
   const [auth] = useAuth();
 
   const initialState = {
-   
+   fileno: auth?.user?.fileno || "",
+   status: "PENDING",
     customFields: {},
   };
 
@@ -355,6 +356,7 @@ const Addbill = () => {
     className={inputClass}
   >
     <option value="PENDING">PENDING</option>
+    <option value="ACCOUNTS">ACCOUNTS</option>
     <option value="PASSED">PASSED</option>
   </select>
 </div>  

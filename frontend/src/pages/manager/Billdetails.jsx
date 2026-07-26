@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../context/Auth";
 import axios from "axios";
 import AdminMenu from "../../components/layout/AdminMenu";
-import { FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEdit, FaSave, FaTrash, FaTimes, FaPlus, FaFileInvoiceDollar, FaEye, FaEyeSlash,FaCopy } from "react-icons/fa";
 import { toast } from "react-toastify";
 import BackButton from "../../components/layout/BackButton";
 
@@ -364,22 +364,42 @@ const Billdetails = () => {
                     <span className="text-xs text-slate-400 font-semibold block">Contract Period</span>
                     <span className="font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs inline-block mt-0.5">{contractperiod} Months</span>
                   </div>
-                  <div className="pt-1">
-                    <span className="text-xs text-slate-400 font-semibold block mb-0.5">Password</span>
-                    <div className="inline-flex items-center gap-2 bg-blue-50 px-2 py-0.5 rounded text-xs mt-0.5">
-                      <span className="font-semibold text-blue-600 font-mono tracking-wider">
-                        {showPassword ? contract.password || "N/A" : "••••••••"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-blue-400 hover:text-blue-600 transition-colors focus:outline-none ml-1"
-                        title={showPassword ? "Hide Password" : "Show Password"}
-                      >
-                        {showPassword ? <FaEyeSlash size={12} /> : <FaEye size={12} />}
-                      </button>
-                    </div>
-                  </div>
+                <div className="pt-1">
+  <span className="text-xs text-slate-400 font-semibold block mb-0.5">
+    Password
+  </span>
+
+  <div className="inline-flex items-center gap-2 bg-blue-50 px-2 py-0.5 rounded text-xs mt-0.5">
+    <span className="font-semibold text-blue-600 font-mono tracking-wider">
+      {showPassword ? contract.password || "N/A" : "••••••••"}
+    </span>
+
+    {/* Show/Hide Password */}
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="text-blue-400 hover:text-blue-600 transition-colors focus:outline-none"
+      title={showPassword ? "Hide Password" : "Show Password"}
+    >
+      {showPassword ? <FaEyeSlash size={12} /> : <FaEye size={12} />}
+    </button>
+
+    {/* Copy Password */}
+    <button
+      type="button"
+      onClick={() => {
+        if (contract.password) {
+          navigator.clipboard.writeText(contract.password);
+          // Optional: toast.success("Password copied!");
+        }
+      }}
+      className="text-green-500 hover:text-green-700 transition-colors focus:outline-none"
+      title="Copy Password"
+    >
+      <FaCopy size={11} />
+    </button>
+  </div>
+</div>
                 </div>
               </div>
 

@@ -26,9 +26,10 @@ const BillHistory = () => {
   const [contractTab, setContractTab] = useState("All");
   const [editingBill, setEditingBill] = useState(null);
   const [editData, setEditData] = useState({});
+  
   // Pagination Configuration
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 100;
+  const contractsPerPage = 10;
 
   const loadData = async () => {
     try {
@@ -40,7 +41,7 @@ const BillHistory = () => {
       ]);
 
       const contracts = (contractsRes.data.contracts || contractsRes.data || []).sort(
-        (a, b) => new Date(b.fileno || 0) - new Date(a.fileno || 0)
+        (a, b) => String(b.fileno || "").localeCompare(String(a.fileno || ""), undefined, { numeric: true })
       );
 
       const mappedContracts = {};
@@ -75,10 +76,8 @@ const BillHistory = () => {
   useEffect(() => {
     const triggerAutoEmails = async () => {
       try {
-        // Quietly pings the backend route to run the check and send emails
         await axios.post(`${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/invoiceupdate`);
       } catch (err) {
-        // Suppress UI toasts and simply log errors internally for debugging
         console.error("Background automated invoice email check failed:", err);
       }
     };
@@ -89,49 +88,19 @@ const BillHistory = () => {
   }, [auth?.user]);
   // ========================================================================
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.trim() !== "") {
-        try {
-          const res = await axios.get(
-            `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/search/${searchQuery}`
-          );
-          setBills(res.data.bills || res.data || []);
-          setCurrentPage(1); 
-        } catch (err) {
-          console.error("Error hitting search endpoint:", err);
-        }
-      } else if (auth?.user) {
-        loadData();
-      }
-    }, 400);
+  const formatDate = (date) => {
+    if (!date) return "-";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString("en-GB").replace(/\//g, "-");
+  };
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, auth?.user]);
-
-const formatDate = (date) => {
-  if (!date) return "-";
-
-  const d = new Date(date);
-
-  if (isNaN(d.getTime())) {
-    return "-";
-  }
-
-  return d.toLocaleDateString("en-GB").replace(/\//g, "-");
-};
-
-const formatToInputDate = (dateString) => {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-
-  if (isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString().split("T")[0];
-};
+  const formatToInputDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
+  };
 
   const formatCurrency = (num) => {
     if (num === undefined || num === null || isNaN(num)) return "-";
@@ -171,7 +140,6 @@ const formatToInputDate = (dateString) => {
       }
     }
 
-    // Apply Division Filter
     if (divisionFilter !== "All") {
       result = result.filter((bill) => {
         const contract = contractsMap[bill.fileno];
@@ -202,130 +170,139 @@ const formatToInputDate = (dateString) => {
   }, [bills, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate, contractsMap]);
 
   const contractFilteredBills = useMemo(() => {
-  if (contractTab === "All") return filteredAndSortedBills;
+    if (contractTab === "All") return filteredAndSortedBills;
 
-  return filteredAndSortedBills.filter((bill) => {
-    const contract = contractsMap[bill.fileno] || {};
-    return (
-      (contract.status || "").toLowerCase() === contractTab.toLowerCase()
-    );
-  });
-}, [filteredAndSortedBills, contractsMap, contractTab]);
-
-
-
-const totalPages = useMemo(() => {
-  return Math.ceil(contractFilteredBills.length / itemsPerPage) || 1;
-}, [contractFilteredBills]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(1);
-    }
-  }, [totalPages, currentPage]);
-
-const categorizedBills = useMemo(() => {
-  const groups = {};
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-
-  const paginatedSlice = contractFilteredBills.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
-
-  paginatedSlice.forEach((bill) => {
-    const key = bill.fileno || "UNASSIGNED";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(bill);
-  });
-
-  return groups;
-}, [contractFilteredBills, currentPage]);
-
-
-const orderedFileNos = useMemo(() => {
-  return Object.keys(categorizedBills).sort((a, b) => {
-    const contractA = contractsMap[a] || {};
-    const contractB = contractsMap[b] || {};
-    return new Date(contractB.fileno || 0) - new Date(contractA.fileno || 0);
-  });
-}, [categorizedBills, contractsMap]);
-
-
-const handleExportExcel = () => {
-  try {
-    if (contractFilteredBills.length === 0) {
-      toast.warning("No data matching applied filters to export.");
-      return;
-    }
-
-    const sortedBillsForExport = [...contractFilteredBills].sort((a, b) => {
-      const fileA = String(a.fileno || "").trim();
-      const fileB = String(b.fileno || "").trim();
-      return fileA.localeCompare(fileB, undefined, { numeric: true, sensitivity: 'base' });
+    return filteredAndSortedBills.filter((bill) => {
+      const contract = contractsMap[bill.fileno] || {};
+      return (contract.status || "").toLowerCase() === contractTab.toLowerCase();
     });
+  }, [filteredAndSortedBills, contractsMap, contractTab]);
 
-    const formatIfDate = (val, key) => {
-      if (!val) return "-";
-      const lowerKey = key.toLowerCase();
-      if (lowerKey.includes("date") || lowerKey.includes("dt")) {
-        const parsed = new Date(val);
-        if (!isNaN(parsed.getTime())) {
-          return parsed.toISOString().split('T')[0]; 
-        }
+  const groupedBills = useMemo(() => {
+    const groups = {};
+    contractFilteredBills.forEach((bill) => {
+      if (!groups[bill.fileno]) {
+        groups[bill.fileno] = [];
       }
-      return val;
-    };
+      groups[bill.fileno].push(bill);
+    });
+    return groups;
+  }, [contractFilteredBills]);
 
-  const exportRows = sortedBillsForExport.map((bill) => {
-  const gross = Number(bill.netamount || 0);
-  const penalty = Number(bill.penalty || 0);
+  // Updated to properly filter contracts when searching, by tab, or by division
+  const allContracts = useMemo(() => {
+    let contracts = Object.values(contractsMap);
 
-  return {
-    "File No": bill.fileno,
-    "Bill No": bill.billno,
-    "E-Invoice Date": formatIfDate(bill.einvoicedate, "date"),
-    "Bill From": formatIfDate(bill.billfrom, "date"),
-    "Bill To": formatIfDate(bill.billto, "date"),
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      const matchingFileNos = new Set(
+        filteredAndSortedBills.map((b) => String(b.fileno || "").toLowerCase())
+      );
 
-    "Net Amount": bill.netamount,
-    "GST": bill.gst,
-    "Total Amount": bill.totalamount,
+      contracts = contracts.filter(
+        (c) =>
+          matchingFileNos.has(String(c.fileno || "").toLowerCase()) ||
+          String(c.fileno || "").toLowerCase().includes(q) ||
+          String(c.workname || "").toLowerCase().includes(q)
+      );
+    }
 
-    "Amount Passed": bill.amountpssd,
-    "Passed Date": formatIfDate(bill.billpassdt, "date"),
+    if (contractTab !== "All") {
+      contracts = contracts.filter(
+        (c) => (c.status || "").toLowerCase() === contractTab.toLowerCase()
+      );
+    }
 
-    "TDS": bill.tds,
-    "GST TDS": bill.gsttds,
-    "CC": bill.cc,
-    "SD": bill.sd,
-    "ESI/PF Penalty": bill.esi_pfpenalty,
-    "Penalty": bill.penalty,
-    "Others": bill.others,
+    if (divisionFilter !== "All") {
+      contracts = contracts.filter(
+        (c) => c.division === divisionFilter
+      );
+    }
 
-    "Status": bill.status,
-    "Penalty %": gross ? ((penalty / gross) * 100).toFixed(2) + "%" : "0%"
+    return contracts.sort((a, b) =>
+      String(b.fileno).localeCompare(
+        String(a.fileno),
+        undefined,
+        { numeric: true }
+      )
+    );
+  }, [contractsMap, contractTab, divisionFilter, searchQuery, filteredAndSortedBills]);
+
+  const totalPages = Math.ceil(allContracts.length / contractsPerPage) || 1;
+
+  const paginatedContracts = useMemo(() => {
+    const start = (currentPage - 1) * contractsPerPage;
+    return allContracts.slice(start, start + contractsPerPage);
+  }, [allContracts, currentPage]);
+
+  const handleExportExcel = () => {
+    try {
+      if (contractFilteredBills.length === 0) {
+        toast.warning("No data matching applied filters to export.");
+        return;
+      }
+
+      const sortedBillsForExport = [...contractFilteredBills].sort((a, b) => {
+        const fileA = String(a.fileno || "").trim();
+        const fileB = String(b.fileno || "").trim();
+        return fileB.localeCompare(fileA, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      const formatIfDate = (val, key) => {
+        if (!val) return "-";
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes("date") || lowerKey.includes("dt")) {
+          const parsed = new Date(val);
+          if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString().split('T')[0]; 
+          }
+        }
+        return val;
+      };
+
+      const exportRows = sortedBillsForExport.map((bill) => {
+        const gross = Number(bill.netamount || 0);
+        const penalty = Number(bill.penalty || 0);
+
+        return {
+          "File No": bill.fileno,
+          "Bill No": bill.billno,
+          "E-Invoice Date": formatIfDate(bill.einvoicedate, "date"),
+          "Bill From": formatIfDate(bill.billfrom, "date"),
+          "Bill To": formatIfDate(bill.billto, "date"),
+          "Net Amount": bill.netamount,
+          "GST": bill.gst,
+          "Total Amount": bill.totalamount,
+          "Amount Passed": bill.amountpssd,
+          "Passed Date": formatIfDate(bill.billpassdt, "date"),
+          "TDS": bill.tds,
+          "GST TDS": bill.gsttds,
+          "CC": bill.cc,
+          "SD": bill.sd,
+          "ESI/PF Penalty": bill.esi_pfpenalty,
+          "Penalty": bill.penalty,
+          "Others": bill.others,
+          "Status": bill.status,
+          "Penalty %": gross ? ((penalty / gross) * 100).toFixed(2) + "%" : "0%"
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
+
+      const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
+        wch: Math.max(key.length, ...exportRows.map(row => String(row[key] ?? '').length)) + 3
+      }));
+      worksheet["!cols"] = colWidths;
+
+      XLSX.writeFile(workbook, `Contract_Complete_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success("Excel ledger file generated successfully with all fields!");
+    } catch (err) {
+      console.error("Export failure: ", err);
+      toast.error("Failed to compile Excel file export");
+    }
   };
-});
-
-    const worksheet = XLSX.utils.json_to_sheet(exportRows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Account Summary");
-
-    const colWidths = Object.keys(exportRows[0] || {}).map((key) => ({
-      wch: Math.max(key.length, ...exportRows.map(row => String(row[key] ?? '').length)) + 3
-    }));
-    worksheet["!cols"] = colWidths;
-
-    XLSX.writeFile(workbook, `Contract_Complete_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-    toast.success("Excel ledger file generated successfully with all fields!");
-  } catch (err) {
-    console.error("Export failure: ", err);
-    toast.error("Failed to compile Excel file export");
-  }
-};
 
   const handleSave = async () => {
     try {
@@ -357,84 +334,69 @@ const handleExportExcel = () => {
     }
   };
 
-const passedAmount = filteredAndSortedBills.reduce((sum, bill) => {
-  const value = String(bill.amountpssd || "").replace(/,/g, "").trim();
-  const amount = Number(value);
+  const passedAmount = filteredAndSortedBills.reduce((sum, bill) => {
+    const value = String(bill.amountpssd || "").replace(/,/g, "").trim();
+    const amount = Number(value);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
 
-  return sum + (Number.isFinite(amount) ? amount : 0);
-}, 0);
-const pendingAmount = filteredAndSortedBills
-  .filter(b => b.status === "PENDING")
-  .reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
+  const pendingAmount = filteredAndSortedBills
+    .filter(b => b.status === "PENDING")
+    .reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
 
-const totalPenalty = filteredAndSortedBills.reduce((sum, bill) => {
-  return (
-    sum +
-    Number(bill.penalty || 0) 
-  );
-}, 0);
+  const totalPenalty = filteredAndSortedBills.reduce((sum, bill) => {
+    return sum + Number(bill.penalty || 0);
+  }, 0);
 
-const grandTotal = filteredAndSortedBills.reduce(
-  (sum, bill) => {
+  const grandTotal = filteredAndSortedBills.reduce((sum, bill) => {
     const value = String(bill.totalamount || "").replace(/,/g, "").trim();
     const amount = Number(value);
     return sum + (Number.isFinite(amount) ? amount : 0);
-  },
-  0
-);
+  }, 0);
 
-const formatIndianCurrency = (amount) => {
-  if (!Number.isFinite(amount)) return "0";
+  const formatIndianCurrency = (amount) => {
+    if (!Number.isFinite(amount)) return "0";
+    if (amount >= 10000000) {
+      return `${(amount / 10000000).toFixed(2)} Cr`;
+    }
+    if (amount >= 100000) {
+      return `${(amount / 100000).toFixed(2)} L`;
+    }
+    return amount.toLocaleString("en-IN");
+  };
 
-  if (amount >= 10000000) {
-    // 1 Crore = 1,00,00,000
-    return `${(amount / 10000000).toFixed(2)} Cr`;
-  }
+  const getPendingBillStatus = (bills) => {
+    if (!bills || bills.length === 0) return "No Bills";
 
-  if (amount >= 100000) {
-    // 1 Lakh = 1,00,000
-    return `${(amount / 100000).toFixed(2)} L`;
-  }
+    const sortedPassedBills = bills
+      .filter((bill) => bill.status === "PASSED")
+      .sort((a, b) => new Date(b.billto || 0) - new Date(a.billto || 0));
 
-  return amount.toLocaleString("en-IN");
-};
+    const lastBill = sortedPassedBills[0] || bills[bills.length - 1];
 
-const getPendingBillStatus = (bills) => {
-  if (!bills || bills.length === 0) return "No Bills";
+    const dateStr = lastBill.billto || 0;
+    if (!dateStr) return "No Date Available";
 
-  // Filter passed bills and sort by billto (latest first)
-  const sortedPassedBills = bills
-    .filter((bill) => bill.status === "PASSED")
-    .sort((a, b) => new Date(b.billto || 0) - new Date(a.billto || 0));
+    const lastBillDate = new Date(dateStr);
+    const today = new Date();
 
-  // The latest bill is now at index 0
-  const lastBill = sortedPassedBills[0] || bills[bills.length - 1];
+    const lastMonthName = lastBillDate.toLocaleString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
 
-  const dateStr = lastBill.billto || 0;
-  if (!dateStr) return "No Date Available";
+    const yearDiff = today.getFullYear() - lastBillDate.getFullYear();
+    const monthDiff = today.getMonth() - lastBillDate.getMonth();
+    const pendingMonths = yearDiff * 12 + monthDiff;
 
-  const lastBillDate = new Date(dateStr);
-  const today = new Date();
+    if (pendingMonths <= 0) {
+      return `Last Passed: ${lastMonthName} • Up to date`;
+    }
 
-  // Format month and year (e.g., "Jul 2019")
-  const lastMonthName = lastBillDate.toLocaleString("en-US", {
-    month: "short",
-    year: "numeric",
-  });
-
-  // Calculate pending months
-  const yearDiff = today.getFullYear() - lastBillDate.getFullYear();
-  const monthDiff = today.getMonth() - lastBillDate.getMonth();
-  const pendingMonths = yearDiff * 12 + monthDiff;
-
-  if (pendingMonths <= 0) {
-    return `Last Passed: ${lastMonthName} • Up to date`;
-  }
-
-  return `Last Passed: ${lastMonthName} • ${pendingMonths} ${
-    pendingMonths === 1 ? "Month" : "Months"
-  } Pending`;
-};
+    return `Last Passed: ${lastMonthName} • ${pendingMonths} ${
+      pendingMonths === 1 ? "Month" : "Months"
+    } Pending`;
+  };
 
   return (
     <Layout title="Bill History Categorized - Manager">
@@ -476,58 +438,57 @@ const getPendingBillStatus = (bills) => {
                 </svg>
               </button>
             </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3  gap-4 mb-6">
 
-  {/* Pending Bills */}
-  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-    <span className="text-sm font-medium text-slate-500">
-      Pending Operations Checklist
-    </span>
-    <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
-      {filteredAndSortedBills.filter(b => b.status !== "PASSED").length} Bills
-    </span>
-  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {/* Pending Bills */}
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">
+                  Pending Operations Checklist
+                </span>
+                <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                  {filteredAndSortedBills.filter(b => b.status !== "PASSED").length} Bills
+                </span>
+              </div>
 
-  {/* Pending Amount */}
-  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-    <span className="text-sm font-medium text-slate-500">
-      Pending for Pass Amount
-    </span>
-    <span className="text-sm font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
-      ₹ {formatIndianCurrency(pendingAmount)}
-    </span>
-  </div>
+              {/* Pending Amount */}
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">
+                  Pending for Pass Amount
+                </span>
+                <span className="text-sm font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                  ₹ {formatIndianCurrency(pendingAmount)}
+                </span>
+              </div>
 
-  {/* Passed Amount */}
-  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-    <span className="text-sm font-medium text-slate-500">
-      Passed Amount
-    </span>
-    <span className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">
-      ₹ {formatIndianCurrency(passedAmount)}
-    </span>
-  </div>
+              {/* Passed Amount */}
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">
+                  Passed Amount
+                </span>
+                <span className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                  ₹ {formatIndianCurrency(passedAmount)}
+                </span>
+              </div>
 
-  {/* Total Penalty */}
-  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-    <span className="text-sm font-medium text-slate-500">
-      Total Penalty
-    </span>
-    <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
-      ₹ {formatIndianCurrency(totalPenalty)}
-    </span>
-  </div>
+              {/* Total Penalty */}
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">
+                  Total Penalty
+                </span>
+                <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                  ₹ {formatIndianCurrency(totalPenalty)}
+                </span>
+              </div>
 
-  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
-  <span className="text-sm font-medium text-slate-500">
-    Total Bill Amount
-  </span>
-  <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-    ₹ {formatIndianCurrency(grandTotal)}
-  </span>
-</div>
-
-</div>
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">
+                  Total Bill Amount
+                </span>
+                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                  ₹ {formatIndianCurrency(grandTotal)}
+                </span>
+              </div>
+            </div>
 
             {/* FILTER & SORT ACTION CONTROLS */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm space-y-4">
@@ -541,7 +502,10 @@ const getPendingBillStatus = (bills) => {
                     className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-700"
                     placeholder="Type to search Bill No or File No..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
                   />
                 </div>
 
@@ -561,7 +525,10 @@ const getPendingBillStatus = (bills) => {
                     <select
                       className="bg-transparent text-xs font-semibold text-slate-600 focus:outline-none cursor-pointer"
                       value={divisionFilter}
-                      onChange={(e) => setDivisionFilter(e.target.value)}
+                      onChange={(e) => {
+                        setDivisionFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
                     >
                       <option value="All">All Divisions</option>
                       {uniqueDivisions.map(div => (
@@ -575,7 +542,10 @@ const getPendingBillStatus = (bills) => {
                     <select
                       className="bg-transparent text-xs font-semibold text-slate-600 focus:outline-none cursor-pointer"
                       value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
+                      onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
                     >
                       <option value="All">All Statuses</option>
                       <option value="PASSED">Bill Passed</option>
@@ -608,7 +578,10 @@ const getPendingBillStatus = (bills) => {
                   <input 
                     type="date" 
                     value={startDate} 
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="border border-slate-200 rounded-md p-1 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-mono"
                   />
                 </div>
@@ -617,13 +590,16 @@ const getPendingBillStatus = (bills) => {
                   <input 
                     type="date" 
                     value={endDate} 
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="border border-slate-200 rounded-md p-1 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-mono"
                   />
                 </div>
                 {(startDate || endDate) && (
                   <button 
-                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                    onClick={() => { setStartDate(""); setEndDate(""); setCurrentPage(1); }}
                     className="text-red-500 hover:text-red-700 underline font-semibold cursor-pointer ml-auto"
                   >
                     Clear Range
@@ -637,7 +613,10 @@ const getPendingBillStatus = (bills) => {
               {["All", "Active", "Closed", "Completed"].map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setContractTab(tab)}
+                  onClick={() => {
+                    setContractTab(tab);
+                    setCurrentPage(1);
+                  }}
                   className={`px-5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
                     contractTab === tab ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
                   }`}
@@ -648,14 +627,15 @@ const getPendingBillStatus = (bills) => {
             </div>
 
             {/* WORKBOOK BUNDLES GRID */}
-            {orderedFileNos.length === 0 ? (
+            {paginatedContracts.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
                 <p className="text-slate-400 font-medium">No ledger accounts or bill items match your adjustments.</p>
               </div>
             ) : (
-              orderedFileNos.map((fileno) => {
-                const currentContract = contractsMap[fileno] || {};
-                const contractBills = categorizedBills[fileno];
+              paginatedContracts.map((contract) => {
+                const fileno = contract.fileno;
+                const currentContract = contract || contractsMap[fileno] || {};
+                const contractBills = groupedBills[fileno] || [];
 
                 const contractTotals = contractBills.reduce((acc, bill) => {
                   acc.totalamount += (Number(bill.totalamount) || 0);
@@ -672,8 +652,6 @@ const getPendingBillStatus = (bills) => {
                   acc.others += (Number(bill.others) || 0);
                   return acc;
                 }, { totalamount: 0, gst: 0, grossTotal: 0, netamount: 0, amountpssd: 0, tds: 0, gsttds: 0, cc: 0, sd: 0, esi_pfpenalty: 0, penalty: 0, others: 0 });
-
-
 
                 return (
                   <div key={fileno} className="mb-10 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -694,335 +672,373 @@ const getPendingBillStatus = (bills) => {
                             {currentContract.status || "N/A"}
                           </span>
                         </div>
-                       
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full">
                           {contractBills.length} {contractBills.length === 1 ? "Bill Viewable" : "Bills Viewable"}
                         </span>
 
-                         <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full">
-  {currentContract?.status === "Active"
-    ? getPendingBillStatus(contractBills)
-    : ""}
-</span>
+                        <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full">
+                          {currentContract?.status === "Active" ? getPendingBillStatus(contractBills) : ""}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Desktop View Table */}
-                    <div className="bulk-ledger-container hidden xl:block max-h-[600px] overflow-auto bg-white rounded-xl shadow-sm border border-slate-200 scroll-smooth">   
-                      <table className="min-w-full text-[11px] font-medium text-slate-700 border-collapse"> 
-                        <thead>
-                          <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 whitespace-nowrap">
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">E-Invoice Date</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Bill No.</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Period From</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Period To</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Net Amount</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">GST</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Gross Total</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-emerald-700">Amount Passed</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Passed Date</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">TDS</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">GST TDS</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">CC Deduction</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Sec. Deposit (SD)</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-500">ESI/PF Penalty</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-600">Penalty</th>
-                            <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Others</th>
-                            <th className="px-2 py-2 text-center font-bold">Status</th>
-                            <th className="px-2 py-2 text-center font-bold">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 font-mono text-slate-800">
+                 { contractBills.length === 0 ? (() => {
+  const startDate = currentContract?.startdate;
+
+  let pendingBills = 0;
+
+  if (startDate) {
+    const start = new Date(startDate);
+    const today = new Date();
+
+    pendingBills =
+      (today.getFullYear() - start.getFullYear()) * 12 +
+      (today.getMonth() - start.getMonth()) +
+      1;
+  }
+
+  return (
+    <div className="p-10 text-center">
+     
+      {startDate && (
+        <>
+          <p className="mt-2 text-gray-600">
+            Contract Started :
+            <span className="font-semibold ml-1">
+              {new Date(startDate).toLocaleDateString("en-GB", {
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </p>
+
+          <p className="mt-2 text-xl font-bold text-orange-600">
+            Pending Bills : {pendingBills}
+          </p>
+        </>
+      )}
+    </div>
+  );
+})() : (
+                      <>
+                        {/* Desktop View Table */}
+                        <div className="bulk-ledger-container hidden xl:block max-h-[600px] overflow-auto bg-white rounded-xl shadow-sm border border-slate-200 scroll-smooth">   
+                          <table className="min-w-full text-[11px] font-medium text-slate-700 border-collapse"> 
+                            <thead>
+                              <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 whitespace-nowrap">
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">E-Invoice Date</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Bill No.</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Period From</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Period To</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Net Amount</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">GST</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Gross Total</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-emerald-700">Amount Passed</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-center font-bold">Passed Date</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">TDS</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">GST TDS</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">CC Deduction</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Sec. Deposit (SD)</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-500">ESI/PF Penalty</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-600">Penalty</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Others</th>
+                                <th className="px-2 py-2 text-center font-bold">Status</th>
+                                <th className="px-2 py-2 text-center font-bold">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 font-mono text-slate-800">
+                              {contractBills.map((bill) => {
+                                const isEditing = editingBill === bill._id;
+                                const gross = Number(isEditing ? editData.netamount : bill.netamount) || 0;
+                                const penaltyAmt = Number(isEditing ? editData.penalty : bill.penalty) || 0;
+                                const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
+
+                                return (
+                                  <tr key={bill._id} className="hover:bg-slate-50/50 transition-colors whitespace-nowrap">
+                                    <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                      {isEditing ? (
+                                        <input 
+                                          type="date" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                          value={formatToInputDate(editData.einvoicedate)}
+                                          onChange={(e) => setEditData({ ...editData, einvoicedate: e.target.value })}
+                                        />
+                                      ) : formatDate(bill.einvoicedate)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-center font-bold text-indigo-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="text" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-16 text-center"
+                                          value={editData.billno || ""}
+                                          onChange={(e) => setEditData({ ...editData, billno: e.target.value })}
+                                        />
+                                      ) : bill.billno || "N/A"}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                      {isEditing ? (
+                                        <input 
+                                          type="date" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                          value={formatToInputDate(editData.billfrom)}
+                                          onChange={(e) => setEditData({ ...editData, billfrom: e.target.value })}
+                                        />
+                                      ) : formatDate(bill.billfrom)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                      {isEditing ? (
+                                        <input 
+                                          type="date" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                          value={formatToInputDate(editData.billto)}
+                                          onChange={(e) => setEditData({ ...editData, billto: e.target.value })}
+                                        />
+                                      ) : formatDate(bill.billto)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right font-semibold">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+                                          value={editData.netamount || ""}
+                                          onChange={(e) => setEditData({ ...editData, netamount: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.netamount)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-16 text-right"
+                                          value={editData.gst || ""}
+                                          onChange={(e) => setEditData({ ...editData, gst: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.gst)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right font-bold text-slate-900 bg-slate-50/50">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+                                          value={editData.totalamount || ""}
+                                          onChange={(e) => setEditData({ ...editData, totalamount: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.totalamount)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-emerald-700 font-bold bg-emerald-50/20">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+                                          value={editData.amountpssd || ""}
+                                          onChange={(e) => setEditData({ ...editData, amountpssd: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.amountpssd || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
+                                      {isEditing ? (
+                                        <input 
+                                          type="date" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
+                                          value={formatToInputDate(editData.billpassdt)}
+                                          onChange={(e) => setEditData({ ...editData, billpassdt: e.target.value })}
+                                        />
+                                      ) : formatDate(bill.billpassdt)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                          value={editData.tds || ""}
+                                          onChange={(e) => setEditData({ ...editData, tds: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.tds || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                          value={editData.gsttds || ""}
+                                          onChange={(e) => setEditData({ ...editData, gsttds: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.gsttds || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                          value={editData.cc || ""}
+                                          onChange={(e) => setEditData({ ...editData, cc: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.cc || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                          value={editData.sd || ""}
+                                          onChange={(e) => setEditData({ ...editData, sd: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.sd || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-red-500">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                          value={editData.esi_pfpenalty || ""}
+                                          onChange={(e) => setEditData({ ...editData, esi_pfpenalty: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.esi_pfpenalty || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-red-600 font-bold bg-red-50/10">
+                                      {isEditing ? (
+                                        <div className="flex flex-col items-end">
+                                          <input 
+                                            type="number" 
+                                            className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                            value={editData.penalty || ""}
+                                            onChange={(e) => setEditData({ ...editData, penalty: e.target.value })}
+                                          />
+                                          <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          {formatCurrency(penaltyAmt)} <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
+                                        </>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
+                                      {isEditing ? (
+                                        <input 
+                                          type="number" 
+                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
+                                          value={editData.others || ""}
+                                          onChange={(e) => setEditData({ ...editData, others: e.target.value })}
+                                        />
+                                      ) : formatCurrency(bill.others || 0)}
+                                    </td>
+                                    <td className="px-2 py-2 text-center font-sans">
+                                      {isEditing ? (
+                                        <select
+                                          className="border border-slate-300 rounded text-[11px] p-0.5"
+                                          value={editData.status || "PENDING"}
+                                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                                        >
+                                          <option value="PENDING">Pending</option>
+                                          <option value="PASSED">Bill Passed</option>
+                                        </select>
+                                      ) : (
+                                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                                          bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                                        }`}>
+                                          {bill.status || "PENDING"}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-center">
+                                      {isEditing ? (
+                                        <div className="flex justify-center gap-2">
+                                          <button
+                                            onClick={handleSave}
+                                            className="text-emerald-600 hover:text-emerald-800"
+                                            title="Save"
+                                          >
+                                            <FaSave size={14} />
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingBill(null)}
+                                            className="text-slate-500 hover:text-slate-700"
+                                            title="Cancel"
+                                          >
+                                            <FaTimes size={14} />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-center gap-2">
+                                          <button
+                                            onClick={() => {
+                                              setEditingBill(bill._id);
+                                              setEditData({ ...bill });
+                                            }}
+                                            className="text-blue-600 hover:text-blue-800"
+                                            title="Edit Inline"
+                                          >
+                                            <FaEdit size={14} />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDelete(bill._id)}
+                                            className="text-red-600 hover:text-red-800"
+                                            title="Delete"
+                                          >
+                                            <FaTrash size={14} />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot className="border-t-2 border-slate-400 bg-slate-100 font-mono text-slate-900 font-bold whitespace-nowrap sticky bottom-0">
+                              <tr>
+                                <td colSpan="4" className="px-2 py-3 border-r border-slate-300 text-center font-sans text-[10px] tracking-wider text-slate-500 uppercase">Total Summary</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-indigo-900 bg-slate-200/40">{formatCurrency(contractTotals.netamount)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.gst)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right bg-slate-200/50">{formatCurrency(contractTotals.totalamount)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-emerald-800 bg-emerald-50 font-extrabold">{formatCurrency(contractTotals.amountpssd)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-center text-slate-400">-</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.tds)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.gsttds)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.cc)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.sd)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700">{formatCurrency(contractTotals.esi_pfpenalty)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700 bg-red-50/40">{formatCurrency(contractTotals.penalty)}</td>
+                                <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.others)}</td>
+                                <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
+                                <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+
+                        {/* Mobile Card Layout */}
+                        <div className="block xl:hidden p-4 space-y-4 bg-slate-50/50">
                           {contractBills.map((bill) => {
-                            const isEditing = editingBill === bill._id;
-                            const gross = Number(isEditing ? editData.netamount : bill.netamount) || 0;
-                            const penaltyAmt = Number(isEditing ? editData.penalty : bill.penalty) || 0;
+                            const gross = Number(bill.totalamount) || 0;
+                            const penaltyAmt = Number(bill.penalty) || 0;
                             const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
+                            const computedGst = Number(bill.gst || (gross * 0.18));
 
                             return (
-                              <tr key={bill._id} className="hover:bg-slate-50/50 transition-colors whitespace-nowrap">
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
-                                  {isEditing ? (
-                                    <input 
-                                      type="date" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
-                                      value={formatToInputDate(editData.einvoicedate)}
-                                      onChange={(e) => setEditData({ ...editData, einvoicedate: e.target.value })}
-                                    />
-                                  ) : formatDate(bill.einvoicedate)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center font-bold text-indigo-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="text" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-16 text-center"
-                                      value={editData.billno || ""}
-                                      onChange={(e) => setEditData({ ...editData, billno: e.target.value })}
-                                    />
-                                  ) : bill.billno || "N/A"}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
-                                  {isEditing ? (
-                                    <input 
-                                      type="date" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
-                                      value={formatToInputDate(editData.billfrom)}
-                                      onChange={(e) => setEditData({ ...editData, billfrom: e.target.value })}
-                                    />
-                                  ) : formatDate(bill.billfrom)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
-                                  {isEditing ? (
-                                    <input 
-                                      type="date" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
-                                      value={formatToInputDate(editData.billto)}
-                                      onChange={(e) => setEditData({ ...editData, billto: e.target.value })}
-                                    />
-                                  ) : formatDate(bill.billto)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right font-semibold">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
-                                      value={editData.netamount || ""}
-                                      onChange={(e) => setEditData({ ...editData, netamount: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.netamount)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-16 text-right"
-                                      value={editData.gst || ""}
-                                      onChange={(e) => setEditData({ ...editData, gst: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.gst)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right font-bold text-slate-900 bg-slate-50/50">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
-                                      value={editData.totalamount || ""}
-                                      onChange={(e) => setEditData({ ...editData, totalamount: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.totalamount)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-emerald-700 font-bold bg-emerald-50/20">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
-                                      value={editData.amountpssd || ""}
-                                      onChange={(e) => setEditData({ ...editData, amountpssd: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.amountpssd || 0)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">
-                                  {isEditing ? (
-                                    <input 
-                                      type="date" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-24"
-                                      value={formatToInputDate(editData.billpassdt)}
-                                      onChange={(e) => setEditData({ ...editData, billpassdt: e.target.value })}
-                                    />
-                                  ) : formatDate(bill.billpassdt)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                      value={editData.tds || ""}
-                                      onChange={(e) => setEditData({ ...editData, tds: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.tds || 0)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                      value={editData.gsttds || ""}
-                                      onChange={(e) => setEditData({ ...editData, gsttds: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.gsttds || 0)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                      value={editData.cc || ""}
-                                      onChange={(e) => setEditData({ ...editData, cc: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.cc || 0)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                      value={editData.sd || ""}
-                                      onChange={(e) => setEditData({ ...editData, sd: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.sd || 0)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-red-500">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                      value={editData.esi_pfpenalty || ""}
-                                      onChange={(e) => setEditData({ ...editData, esi_pfpenalty: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.esi_pfpenalty || 0)}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-red-600 font-bold bg-red-50/10">
-                                  {isEditing ? (
-                                    <div className="flex flex-col items-end">
-                                      <input 
-                                        type="number" 
-                                        className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                        value={editData.penalty || ""}
-                                        onChange={(e) => setEditData({ ...editData, penalty: e.target.value })}
-                                      />
-                                      <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      {formatCurrency(penaltyAmt)} <span className="text-[9px] text-slate-400 font-sans font-normal">({calculatedPercentage}%)</span>
-                                    </>
-                                  )}
-                                </td>
-                                <td className="px-2 py-2 border-r border-slate-200 text-right text-slate-600">
-                                  {isEditing ? (
-                                    <input 
-                                      type="number" 
-                                      className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                      value={editData.others || ""}
-                                      onChange={(e) => setEditData({ ...editData, others: e.target.value })}
-                                    />
-                                  ) : formatCurrency(bill.others || 0)}
-                                </td>
-                                <td className="px-2 py-2 text-center font-sans">
-                                  {isEditing ? (
-                                    <select
-                                      className="border border-slate-300 rounded text-[11px] p-0.5"
-                                      value={editData.status || "PENDING"}
-                                      onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-                                    >
-                                      <option value="PENDING">Pending</option>
-                                      <option value="PASSED">Bill Passed</option>
-                                    </select>
-                                  ) : (
-                                    <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                                      bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                                    }`}>
-                                      {bill.status || "Processing"}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-2 py-2 text-center">
-                                  {isEditing ? (
-                                    <div className="flex justify-center gap-2">
-                                      <button
-                                        onClick={handleSave}
-                                        className="text-emerald-600 hover:text-emerald-800"
-                                        title="Save"
-                                      >
-                                        <FaSave size={14} />
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingBill(null)}
-                                        className="text-slate-500 hover:text-slate-700"
-                                        title="Cancel"
-                                      >
-                                        <FaTimes size={14} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex justify-center gap-2">
-                                      <button
-                                        onClick={() => {
-                                          setEditingBill(bill._id);
-                                          setEditData({ ...bill });
-                                        }}
-                                        className="text-blue-600 hover:text-blue-800"
-                                        title="Edit Inline"
-                                      >
-                                        <FaEdit size={14} />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(bill._id)}
-                                        className="text-red-600 hover:text-red-800"
-                                        title="Delete"
-                                      >
-                                        <FaTrash size={14} />
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
+                              <div key={bill._id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm font-sans text-xs">
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
+                                  <span className="font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded">Bill #{bill.billno || "N/A"}</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{bill.status || "Processing"}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 font-mono">
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">E-Invoice Date:</span><span>{formatDate(bill.einvoicedate)}</span></div>
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">Period Range:</span><span className="text-slate-700 text-[11px]">{formatDate(bill.billfrom)} to {formatDate(bill.billto)}</span></div>
+                                  <hr className="col-span-2 my-1 border-slate-100" />
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">Base Amount:</span><span className="font-semibold text-slate-800">₹ {formatCurrency(gross)}</span></div>
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">GST (18%):</span><span className="text-slate-700">₹ {formatCurrency(computedGst)}</span></div>
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">Gross Total:</span><span className="font-bold text-slate-900">₹ {formatCurrency(gross + computedGst)}</span></div>
+                                  <hr className="col-span-2 my-1 border-slate-100" />
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">Passed Date:</span><span className="text-slate-700">{formatDate(bill.billpassdt)}</span></div>
+                                  <div><span className="text-slate-400 font-sans text-[11px] block">Amount Passed:</span><span className="font-bold text-emerald-700">₹ {formatCurrency(bill.amountpssd || 0)}</span></div>
+                                </div>
+                              </div>
                             );
                           })}
-                        </tbody>
-                        <tfoot className="border-t-2 border-slate-400 bg-slate-100 font-mono text-slate-900 font-bold whitespace-nowrap sticky bottom-0">
-                          <tr>
-                            <td colSpan="4" className="px-2 py-3 border-r border-slate-300 text-center font-sans text-[10px] tracking-wider text-slate-500 uppercase">Total Summary</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-indigo-900 bg-slate-200/40">{formatCurrency(contractTotals.netamount)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.gst)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right bg-slate-200/50">{formatCurrency(contractTotals.totalamount)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-emerald-800 bg-emerald-50 font-extrabold">{formatCurrency(contractTotals.amountpssd)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-center text-slate-400">-</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.tds)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.gsttds)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.cc)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.sd)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700">{formatCurrency(contractTotals.esi_pfpenalty)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700 bg-red-50/40">{formatCurrency(contractTotals.penalty)}</td>
-                            <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.others)}</td>
-                            <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
-                            <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {/* Mobile Card Layout */}
-                    <div className="block xl:hidden p-4 space-y-4 bg-slate-50/50">
-                      {contractBills.map((bill) => {
-                        const gross = Number(bill.totalamount) || 0;
-                        const penaltyAmt = Number(bill.penalty) || 0;
-                        const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
-                        const computedGst = Number(bill.gst || (gross * 0.18));
-
-                        return (
-                          <div key={bill._id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm font-sans text-xs">
-                            <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
-                              <span className="font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded">Bill #{bill.billno || "N/A"}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "Bill Passed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{bill.status || "Processing"}</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 font-mono">
-                              <div><span className="text-slate-400 font-sans text-[11px] block">E-Invoice Date:</span><span>{formatDate(bill.einvoicedate)}</span></div>
-                              <div><span className="text-slate-400 font-sans text-[11px] block">Period Range:</span><span className="text-slate-700 text-[11px]">{formatDate(bill.billfrom)} to {formatDate(bill.billto)}</span></div>
-                              <hr className="col-span-2 my-1 border-slate-100" />
-                              <div><span className="text-slate-400 font-sans text-[11px] block">Base Amount:</span><span className="font-semibold text-slate-800">₹ {formatCurrency(gross)}</span></div>
-                              <div><span className="text-slate-400 font-sans text-[11px] block">GST (18%):</span><span className="text-slate-700">₹ {formatCurrency(computedGst)}</span></div>
-                              <div><span className="text-slate-400 font-sans text-[11px] block">Gross Total:</span><span className="font-bold text-slate-900">₹ {formatCurrency(gross + computedGst)}</span></div>
-                              <hr className="col-span-2 my-1 border-slate-100" />
-                              <div><span className="text-slate-400 font-sans text-[11px] block">Passed Date:</span><span className="text-slate-700">{formatDate(bill.billpassdt)}</span></div>
-                              <div><span className="text-slate-400 font-sans text-[11px] block">Amount Passed:</span><span className="font-bold text-emerald-700">₹ {formatCurrency(bill.amountpssd || 0)}</span></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })
