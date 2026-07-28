@@ -474,7 +474,7 @@ const Contracts = () => {
             </div>
           </div>
 
-{/* <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
+<label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
   <input
     type="checkbox"
     checked={subFilter === "sub"}
@@ -487,7 +487,7 @@ const Contracts = () => {
   <span className="text-xs font-medium text-slate-600">
     Sub-Contractors
   </span>
-</label> */}
+</label>
 
           {/* Counter Section */}
           <div className="mb-4 flex justify-between items-center">
@@ -516,6 +516,7 @@ const Contracts = () => {
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Number</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Value</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Penalty</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Started On</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Validity / Progress</th>
                       <th className="px-4 py-3 text-center font-semibold">Status</th>
                     </tr>
@@ -548,9 +549,9 @@ const Contracts = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 border-r">
-                          {contract.contractNumber || "N/A"}
-                        </td>
+                    <td className="px-4 py-3 border-r break-all whitespace-normal">
+  {contract.contractNumber || "N/A"}
+</td>
                         <td className="px-4 py-3 border-r">
                           ₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}
                         </td>
@@ -578,6 +579,10 @@ const Contracts = () => {
                             );
                           })()}
                         </td>
+                       <td className="px-4 py-3 border-r whitespace-nowrap overflow-hidden text-ellipsis">
+  {formatDate(contract.startdate)}
+</td>
+
                         <td className="px-4 py-3 border-r">
                           {(() => {
                             const billAmount = matchedBills

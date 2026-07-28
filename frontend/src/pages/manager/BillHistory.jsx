@@ -18,6 +18,7 @@ const BillHistory = () => {
   // Filter and Sort states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  
   const [penaltyFilter, setPenaltyFilter] = useState("All"); 
   const [divisionFilter, setDivisionFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
@@ -53,9 +54,9 @@ const BillHistory = () => {
 
       setContractsMap(mappedContracts);
 
-      const sortedBills = (billsRes.data.bills || []).sort(
-        (a, b) => new Date(b.einvoicedate) - new Date(a.einvoicedate)
-      );
+      const sortedBills = (billsRes.data.bills || billsRes.data || []).sort(
+  (a, b) => new Date(b.einvoicedate) - new Date(a.einvoicedate)
+);
       setBills(sortedBills);
 
     } catch (err) {
@@ -132,13 +133,30 @@ const BillHistory = () => {
       );
     }
 
-    if (statusFilter !== "All") {
-      if (statusFilter === "E-Invoice_Pending") {
-        result = result.filter((bill) => bill.einvoicedate && (!bill.amountpssd || bill.amountpssd === ""));
-      } else {
-        result = result.filter((bill) => (bill.status || "pending").toLowerCase() === statusFilter.toLowerCase());
-      }
-    }
+if (statusFilter !== "All") {
+  if (statusFilter === "E-Invoice_Pending") {
+    result = result.filter((bill) => {
+      const hasEInvoiceDate = Boolean(bill.einvoicedate);
+      
+      const rawPassed = String(bill.amountpssd ?? "").trim();
+      const isPassedAmountEmpty = rawPassed === "" || rawPassed === "0" || Number(rawPassed) === 0;
+
+      const isPendingStatus = (bill.status || "pending").toLowerCase() === "pending";
+
+      return hasEInvoiceDate && isPassedAmountEmpty && isPendingStatus;
+    });
+  } else {
+   result = result.filter((bill) => 
+      (bill.status || "pending").toLowerCase() === statusFilter.toLowerCase()
+    );
+  }
+ 
+}
+
+
+
+
+ 
 
     if (divisionFilter !== "All") {
       result = result.filter((bill) => {
@@ -159,8 +177,8 @@ const BillHistory = () => {
     }
 
     result.sort((a, b) => {
-      if (sortBy === "date-desc") return new Date(b.month + "-01") - new Date(a.month + "-01");
-      if (sortBy === "date-asc") return new Date(a.month + "-01") - new Date(a.month + "-01");
+      if (sortBy === "date-desc") return new Date(b.einvoicedate || 0) - new Date(a.einvoicedate || 0);
+      if (sortBy === "date-asc") return new Date(a.einvoicedate || 0) - new Date(b.einvoicedate || 0);
       if (sortBy === "amount-desc") return (b.totalamount || 0) - (a.totalamount || 0);
       if (sortBy === "amount-asc") return (a.totalamount || 0) - (b.totalamount || 0);
       return 0;
@@ -179,26 +197,35 @@ const BillHistory = () => {
   }, [filteredAndSortedBills, contractsMap, contractTab]);
 
   const groupedBills = useMemo(() => {
-    const groups = {};
-    contractFilteredBills.forEach((bill) => {
-      if (!groups[bill.fileno]) {
-        groups[bill.fileno] = [];
-      }
-      groups[bill.fileno].push(bill);
-    });
-    return groups;
-  }, [contractFilteredBills]);
+  const groups = {};
+  contractFilteredBills.forEach((bill) => {
+    const key = String(bill.fileno || "").trim();
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(bill);
+  });
+  return groups;
+}, [contractFilteredBills]);
 
-  // Updated to properly filter contracts when searching, by tab, or by division
+// Updated to filter out empty contracts specifically for E-Invoice Pending
   const allContracts = useMemo(() => {
     let contracts = Object.values(contractsMap);
 
+    // Set of file numbers that have matching bills after status/date/search filtering
+    const matchingFileNos = new Set(
+      filteredAndSortedBills.map((b) => String(b.fileno || "").toLowerCase())
+    );
+
+    // Hide empty contracts ONLY when E-Invoice Pending is selected
+    if (statusFilter === "E-Invoice_Pending") {
+      contracts = contracts.filter((c) =>
+        matchingFileNos.has(String(c.fileno || "").toLowerCase())
+      );
+    }
+
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
-      const matchingFileNos = new Set(
-        filteredAndSortedBills.map((b) => String(b.fileno || "").toLowerCase())
-      );
-
       contracts = contracts.filter(
         (c) =>
           matchingFileNos.has(String(c.fileno || "").toLowerCase()) ||
@@ -226,7 +253,14 @@ const BillHistory = () => {
         { numeric: true }
       )
     );
-  }, [contractsMap, contractTab, divisionFilter, searchQuery, filteredAndSortedBills]);
+  }, [contractsMap, contractTab, divisionFilter, searchQuery, statusFilter, filteredAndSortedBills]);
+
+
+
+
+
+
+  
 
   const totalPages = Math.ceil(allContracts.length / contractsPerPage) || 1;
 
@@ -365,38 +399,51 @@ const BillHistory = () => {
     return amount.toLocaleString("en-IN");
   };
 
-  const getPendingBillStatus = (bills) => {
-    if (!bills || bills.length === 0) return "No Bills";
+const getPendingBillStatus = (bills, statusFilter) => {
+  if (!bills || bills.length === 0) return "No Bills";
 
-    const sortedPassedBills = bills
-      .filter((bill) => bill.status === "PASSED")
-      .sort((a, b) => new Date(b.billto || 0) - new Date(a.billto || 0));
+  let filteredBills = bills;
 
-    const lastBill = sortedPassedBills[0] || bills[bills.length - 1];
+  // 1. Apply filtering based on statusFilter parameter
+  if (statusFilter === "E-Invoice_Pending") {
+    filteredBills = bills.filter((bill) => bill.status );
+  } else if (statusFilter === "pending") {
+    filteredBills = bills.filter((bill) => bill.status == "PASSED" );
+  } else if (statusFilter === "all") {
+    filteredBills = bills.filter((bill) => bill.status ); // No filtering needed
+  }
 
-    const dateStr = lastBill.billto || 0;
-    if (!dateStr) return "No Date Available";
+  if (filteredBills.length === 0) return "No Matching Bills";
 
-    const lastBillDate = new Date(dateStr);
-    const today = new Date();
+  // 2. Sort the target bills by billto date descending
+  const sortedBills = filteredBills.sort(
+    (a, b) => new Date(b.billto || 0) - new Date(a.billto || 0)
+  );
 
-    const lastMonthName = lastBillDate.toLocaleString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
+  const lastBill = sortedBills[0];
+  const dateStr = lastBill?.billto || 0;
+  if (!dateStr) return "No Date Available";
 
-    const yearDiff = today.getFullYear() - lastBillDate.getFullYear();
-    const monthDiff = today.getMonth() - lastBillDate.getMonth();
-    const pendingMonths = yearDiff * 12 + monthDiff;
+  const lastBillDate = new Date(dateStr);
+  const today = new Date();
 
-    if (pendingMonths <= 0) {
-      return `Last Passed: ${lastMonthName} • Up to date`;
-    }
+  const lastMonthName = lastBillDate.toLocaleString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
 
-    return `Last Passed: ${lastMonthName} • ${pendingMonths} ${
-      pendingMonths === 1 ? "Month" : "Months"
-    } Pending`;
-  };
+  const yearDiff = today.getFullYear() - lastBillDate.getFullYear();
+  const monthDiff = today.getMonth() - lastBillDate.getMonth();
+  const pendingMonths = yearDiff * 12 + monthDiff;
+
+  if (pendingMonths <= 0) {
+    return `Last Passed: ${lastMonthName} • Up to date`;
+  }
+
+  return `Last Passed: ${lastMonthName} • ${pendingMonths} ${
+    pendingMonths === 1 ? "Month" : "Months"
+  } Pending`;
+};
 
   return (
     <Layout title="Bill History Categorized - Manager">
@@ -695,8 +742,7 @@ const BillHistory = () => {
 
     pendingBills =
       (today.getFullYear() - start.getFullYear()) * 12 +
-      (today.getMonth() - start.getMonth()) +
-      1;
+      (today.getMonth() - start.getMonth()) 
   }
 
   return (
