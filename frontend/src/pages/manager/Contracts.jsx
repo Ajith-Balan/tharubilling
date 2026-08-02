@@ -31,7 +31,7 @@ const Contracts = () => {
 
   // Search, Filter, & Sort States - Defaulted to showing latest contracts first
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("Active");
   const [divisionFilter, setDivisionFilter] = useState("All");
   const [subFilter, setSubFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
@@ -169,12 +169,21 @@ const Contracts = () => {
     ) {
       return false;
     }
-    if (
-      subFilter !== "All" &&
-      contract.owner?.toLowerCase() !== subFilter.toLowerCase() 
-    ) {
-      return false;
-    }
+
+ // Sub Contract Filter
+if (
+  subFilter === "sub" &&
+  contract.owner?.toLowerCase() !== "sub"
+) {
+  return false;
+}
+
+if (
+  subFilter === "removeSub" &&
+  contract.owner?.toLowerCase() === "sub"
+) {
+  return false;
+}
     if (divisionFilter !== "All" && contract.division !== divisionFilter) {
       return false;
     }
@@ -473,21 +482,58 @@ const Contracts = () => {
               </select>
             </div>
           </div>
+          
 
-<label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
-  <input
-    type="checkbox"
-    checked={subFilter === "sub"}
-    onChange={(e) => {
-      setSubFilter(e.target.checked ? "sub" : "All");
-      setCurrentPage(1);
-    }}
-    className="w-4 h-4 accent-blue-600"
-  />
-  <span className="text-xs font-medium text-slate-600">
-    Sub-Contractors
-  </span>
-</label>
+<div className="flex items-center gap-4">
+  {/* All */}
+  <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
+    <input
+      type="radio"
+      name="subFilter"
+      checked={subFilter === "All"}
+      onChange={() => {
+        setSubFilter("All");
+        setCurrentPage(1);
+      }}
+      className="w-4 h-4 accent-blue-600"
+    />
+    <span className="text-xs font-medium text-slate-600">All</span>
+  </label>
+
+  {/* Only Sub */}
+  <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
+    <input
+      type="radio"
+      name="subFilter"
+      checked={subFilter === "sub"}
+      onChange={() => {
+        setSubFilter("sub");
+        setCurrentPage(1);
+      }}
+      className="w-4 h-4 accent-blue-600"
+    />
+    <span className="text-xs font-medium text-slate-600">
+      Only Sub
+    </span>
+  </label>
+
+  {/* Exclude Sub */}
+  <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
+    <input
+      type="radio"
+      name="subFilter"
+      checked={subFilter === "removeSub"}
+      onChange={() => {
+        setSubFilter("removeSub");
+        setCurrentPage(1);
+      }}
+      className="w-4 h-4 accent-blue-600"
+    />
+    <span className="text-xs font-medium text-slate-600">
+      Remove Sub
+    </span>
+  </label>
+</div>
 
           {/* Counter Section */}
           <div className="mb-4 flex justify-between items-center">

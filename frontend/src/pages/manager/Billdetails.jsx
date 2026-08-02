@@ -204,11 +204,11 @@ const Billdetails = () => {
 
   const pendingBills = filteredBills.filter((bill) => bill.status === "PENDING");
   const passedBills = filteredBills.filter((bill) => bill.status === "PASSED");
-  const emptyEInvoiceCount = filteredBills.filter((bill) => !bill.einvoicedate).length;
+  const billscount = filteredBills.length;
 
   const lastPassedMonth =
-    emptyEInvoiceCount > 0
-      ? `${emptyEInvoiceCount} bill${emptyEInvoiceCount > 1 ? "s" : ""} not ready for taking E-Invoice`
+    billscount > 0
+      ? `${billscount} `
       : passedBills.length > 0
       ? new Date(passedBills[passedBills.length - 1].billfrom).toLocaleString("default", {
           month: "long",
@@ -471,13 +471,13 @@ const Billdetails = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
               <span className="text-sm font-medium text-slate-500">
-                {emptyEInvoiceCount > 0 ? "E-Invoice Status Warning" : "Last Passed Bill Month"}
+                {billscount > 0 ? "Total Bills" : "Bills"}
               </span>
               <span
                 className={`text-sm font-bold px-3 py-1 rounded-full ${
-                  emptyEInvoiceCount > 0
-                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                    : "text-slate-800 bg-slate-100"
+                 
+                     "bg-amber-50 text-amber-700 border border-amber-200"
+                
                 }`}
               >
                 {lastPassedMonth}
@@ -677,6 +677,13 @@ const Billdetails = () => {
                   <button onClick={() => handleEditClick(bill)} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit"><FaEdit size={14} /></button>
                 )}
                 <button onClick={() => handleDelete(bill._id)} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Delete"><FaTrash size={14} /></button>
+                 <Link
+                  to={`/dashboard/manager/editbill/${bill._id}`}
+                 className="p-1 text-slate-400 hover:text-green-600 hover:bg-red-50 rounded"
+                >
+                  <FaEdit size={14} />
+               
+                </Link>
               </div>
             </td>
           </tr>

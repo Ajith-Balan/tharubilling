@@ -72,7 +72,7 @@ export const bulkCreateBillsController = async (req, res) => {
 
         esi_pfpenalty: c.esi_pfpenalty || c["ESI/PF Penalty"],
         Linen_Loss: c.Linen_Loss || c["Linen Loss"] ,
-        others: c.others || c["Others"] ,
+        other_deductions: c.other_deductions || c["Others"] ,
         
         penalty: c.penalty || c["Penalty"] ,
         pg: c.pg || c["PG"],

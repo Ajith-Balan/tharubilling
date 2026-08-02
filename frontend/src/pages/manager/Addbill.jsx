@@ -136,7 +136,7 @@ const Addbill = () => {
           esi_pfpenalty: 600,
           Linen_Loss: 622,
           berth_charge: 0,
-          others: 300,
+          other_deductions: 300,
           Debit_recovery: 0,
           Water_cess_charge: 0,
           low_scoring: 0,
@@ -510,8 +510,8 @@ const Addbill = () => {
                   <input type="number" name="short_payment" value={formData.short_payment} onChange={handleChange} className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>Others</label>
-                  <input type="number" name="others" value={formData.others} onChange={handleChange} className={inputClass} />
+                  <label className={labelClass}>Other Deductions</label>
+                  <input type="number" name="other_deductions" value={formData.other_deductions} onChange={handleChange} className={inputClass} />
                 </div>
               </div>
             </div>

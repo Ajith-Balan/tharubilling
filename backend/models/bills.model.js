@@ -107,7 +107,7 @@ const billsSchema = new mongoose.Schema(
     berth_charge: {
       type: String,
     },
-    others: {
+    other_deductions: {
       type: String,
     },
     Debit_recovery: {

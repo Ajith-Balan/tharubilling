@@ -30,20 +30,27 @@ const Footer = () => {
           >
             Contact
           </Link>
+
+                   <a 
+          href="https://www.instagram.com/ajith____b?igsh=d2lwZHg1Y2hqeHl4" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-center hover:text-gray-400"
+        >
+           
+          <FaInstagram className="h-6 w-6" />
+         
+        </a>
         </div>
         {/* Copyright Section */}
         <div className="mt-4 text-center text-sm">
           <p>&copy; {new Date().getFullYear()} Tharu & sons All rights reserved. </p>
+       
           <div className="max-w-7xl mx-auto flex justify-center space-x-4">
      
-      {/*   <a 
-          href="https://wa.me/8129718562" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="hover:text-gray-400"
-        >
-          <FaWhatsapp className="h-6 w-6" />
-        </a>
+    
+  
+          {/* 
         <a 
           href="mailto:ayalurajith@gmail.com" 
           className="hover:text-gray-400"

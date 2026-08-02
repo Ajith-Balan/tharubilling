@@ -304,18 +304,18 @@ if (statusFilter !== "All") {
           "E-Invoice Date": formatIfDate(bill.einvoicedate, "date"),
           "Bill From": formatIfDate(bill.billfrom, "date"),
           "Bill To": formatIfDate(bill.billto, "date"),
-          "Net Amount": bill.netamount,
-          "GST": bill.gst,
-          "Total Amount": bill.totalamount,
-          "Amount Passed": bill.amountpssd,
+          "Net Amount": Number(bill.netamount),
+          "GST": Number(bill.gst),
+          "Total Amount": Number(bill.totalamount),
+          "Amount Passed": Number(bill.amountpssd),
           "Passed Date": formatIfDate(bill.billpassdt, "date"),
-          "TDS": bill.tds,
-          "GST TDS": bill.gsttds,
-          "CC": bill.cc,
-          "SD": bill.sd,
-          "ESI/PF Penalty": bill.esi_pfpenalty,
-          "Penalty": bill.penalty,
-          "Others": bill.others,
+          "TDS": Number(bill.tds),
+          "GST TDS": Number(bill.gsttds),
+          "CC": Number(bill.cc),
+          "SD": Number(bill.sd),
+          "ESI/PF Penalty": Number(bill.esi_pfpenalty),
+          "Penalty": Number(bill.penalty),
+          "Others": Number(bill.others),
           "Status": bill.status,
           "Penalty %": gross ? ((penalty / gross) * 100).toFixed(2) + "%" : "0%"
         };
@@ -375,7 +375,7 @@ if (statusFilter !== "All") {
   }, 0);
 
   const pendingAmount = filteredAndSortedBills
-    .filter(b => b.status === "PENDING")
+    .filter(b => b.status !== "PASSED")
     .reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
 
   const totalPenalty = filteredAndSortedBills.reduce((sum, bill) => {
