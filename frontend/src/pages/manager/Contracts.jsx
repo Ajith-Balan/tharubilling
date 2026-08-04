@@ -564,6 +564,7 @@ if (
                       <th className="px-4 py-3 text-left font-semibold border-r">Penalty</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Started On</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Validity / Progress</th>
+                      <th className="px-4 py-3 text-left font-semibold border-r">Extension</th>
                       <th className="px-4 py-3 text-center font-semibold">Status</th>
                     </tr>
                   </thead>
@@ -654,18 +655,21 @@ if (
                                   <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
                                     ₹{billAmount.toLocaleString("en-IN")}
                                   </span>
-                                  {/* Extension date only rendered when valid */}
-                                  {contract.extension && (
-                                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                                      Ext: {formatDate(contract.extension)}
-                                    </span>
-                                  )}
+                             
                                 </div>
                               </div>
                             );
                           })()}
                         </td>
-                        <td className="px-4 py-3 text-center font-bold">
+                        <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold">
+                               {/* Extension date only rendered when valid */}
+                                  {contract.extension && (
+                                    <span >
+                                      {formatDate(contract.extension)}
+                                    </span>
+                                  )}
+                        </td> 
+                         <td className="px-4 py-3 text-center font-bold">
                           {contract.status || "N/A"}
                         </td>
                       </tr>

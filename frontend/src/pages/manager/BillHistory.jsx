@@ -789,7 +789,7 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                 <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Sec. Deposit (SD)</th>
                                 <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-500">ESI/PF Penalty</th>
                                 <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-600">Penalty</th>
-                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Others</th>
+                                <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Other Deductions</th>
                                 <th className="px-2 py-2 text-center font-bold">Status</th>
                                 <th className="px-2 py-2 text-center font-bold">Action</th>
                               </tr>
@@ -965,10 +965,10 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                         <input 
                                           type="number" 
                                           className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-14 text-right"
-                                          value={editData.others || ""}
-                                          onChange={(e) => setEditData({ ...editData, others: e.target.value })}
+                                          value={editData.other_deductions || ""}
+                                          onChange={(e) => setEditData({ ...editData, other_deductions: e.target.value })}
                                         />
-                                      ) : formatCurrency(bill.others || 0)}
+                                      ) : formatCurrency(bill.other_deductions || 0)}
                                     </td>
                                     <td className="px-2 py-2 text-center font-sans">
                                       {isEditing ? (
