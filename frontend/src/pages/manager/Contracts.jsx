@@ -31,7 +31,7 @@ const Contracts = () => {
 
   // Search, Filter, & Sort States - Defaulted to showing latest contracts first
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Active");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [divisionFilter, setDivisionFilter] = useState("All");
   const [subFilter, setSubFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");

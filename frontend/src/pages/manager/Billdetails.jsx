@@ -21,7 +21,7 @@ const Billdetails = () => {
   // 1. Identify schema fields to exclude from dynamic column parsing
   const staticKeys = [
     "_id", "einvoicedate", "billno", "billfrom", "billto", 
-    "billpassdt", "status", "_isCustomStatus", "__v", "createdAt", "updatedAt","fileno"
+    "billpassdt", "status", "_isCustomStatus", "__v", "createdAt", "updatedAt","fileno","sendmail"
   ];
 
   // 2. Compute dynamic columns natively by scanning top-level schemas + the customFields object
