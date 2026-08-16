@@ -521,6 +521,7 @@ const Billdetails = () => {
         ))}
         
         <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Passed Date</th>
+        <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center text-red-700">Balance </th>
         <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Status</th>
         <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center min-w-[100px]">Actions</th>
       </tr>
@@ -602,6 +603,23 @@ const Billdetails = () => {
                 formatDate(bill.billpassdt)
               )}
             </td>
+
+ <td className="px-2 py-3 border-r border-slate-200 text-center text-red-500 whitespace-nowrap">
+  {formatCurrency(
+       
+     (Number(bill.totalamount) || 0)-
+    (
+      (Number(bill.amountpssd) || 0) +
+      (Number(bill.tds) || 0) +
+      (Number(bill.gsttds) || 0) +
+      (Number(bill.penalty) || 0)+
+      (Number(bill.other_deductions) || 0)
+    )
+
+  )}
+
+
+</td>
 
             {/* Status Column */}
             <td className="px-2 py-3 border-r border-slate-200 text-center font-sans">
