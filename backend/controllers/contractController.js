@@ -21,7 +21,7 @@ export async function createcontractController(req, res) {
             // ✅ Generate Contract ID
     const prefix = "CON";
     const latestContract = await contractModel.findOne({ fileno: { $exists: true } })
-      .sort({ createdAt: -1 });
+      .sort({ fileno: -1 });
 
     let newFileno = `${prefix}1`;
 
@@ -32,6 +32,7 @@ export async function createcontractController(req, res) {
 
     // Create the train
     const contract = await contractModel.create({
+      date,
       railway, division, trainname, workname, nameofthework, fileno: newFileno, contractNumber, extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner,managername,managerphone
     });
 
@@ -50,6 +51,7 @@ export async function createcontractController(req, res) {
     });
   }
 };
+
 
 
 

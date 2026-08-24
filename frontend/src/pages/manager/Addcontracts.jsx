@@ -297,6 +297,24 @@ const Addcontracts = () => {
                   </select>
                 </div>
 
+                    <div>
+                  <label className={labelClass}>Sub- if any*</label>
+  <select name="status" value={formData.status} onChange={handleChange} className={inputClass}>
+                    <option value="">Select</option>
+                    <option value="Closed">SUB</option>
+             
+                  </select>            
+                      </div>
+
+                     <div>
+                  <label className={labelClass}>Manager Name</label>
+                  <input type="text" name="managername" value={formData.managername} onChange={handleChange} className={inputClass} />
+                </div>
+                     <div>
+                  <label className={labelClass}>Manager Phone</label>
+                  <input type="text" name="managerphone" value={formData.managerphone} onChange={handleChange} className={inputClass} />
+                </div>
+
                    <div>
                   <label className={labelClass}>Remarks</label>
                   <input type="text" name="remarks" value={formData.remarks} onChange={handleChange} className={inputClass} />
