@@ -3,54 +3,124 @@ import { comparePassword } from "../helpers/authhelper.js";
 import JWT from "jsonwebtoken"
 import dotenv from 'dotenv'
 
-
 export async function createcontractController(req, res) {
   try {
-    const {date, railway,division,trainname, workname,nameofthework, fileno,contractNumber,extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner,managername,managerphone } = req.body;
+    const {
+      date,
+      railway,
+      division,
+      trainname,
+      workname,
+      nameofthework,
+      contractNumber,
+      extension,
+      password,
+      startdate,
+      enddate,
+      contractvalue,
+      bg,
+      validity,
+      status,
+      remarks,
+      owner,
+      managername,
+      managerphone
+    } = req.body;
 
-    // Validation (add additional checks if necessary)
-        const exisitingContract = await contractModel.findOne({ fileno });
-        //exisiting user
-        if (exisitingContract) {
-          return res.status(200).send({
-            success: false,
-            msg: "Contract already exists",
-          });
-        }
-
-            // ✅ Generate Contract ID
     const prefix = "CON";
-    const latestContract = await contractModel.findOne({ fileno: { $exists: true } })
-      .sort({ fileno: -1 });
 
+    // Find the contract having the highest CON number
+    const latestContract = await contractModel.aggregate([
+      {
+        $match: {
+          fileno: {
+            $type: "string",
+            $regex: /^CON[0-9]+$/
+          }
+        }
+      },
+      {
+        $project: {
+          fileno: 1,
+          filenoNumber: {
+            $convert: {
+              input: {
+                $substrCP: [
+                  "$fileno",
+                  3,
+                  { $strLenCP: "$fileno" }
+                ]
+              },
+              to: "int",
+              onError: 0,
+              onNull: 0
+            }
+          }
+        }
+      },
+      {
+        $sort: {
+          filenoNumber: -1
+        }
+      },
+      {
+        $limit: 1
+      }
+    ]);
+
+    // Generate next fileno
     let newFileno = `${prefix}1`;
 
-    if (latestContract?.fileno) {
-      const lastNum = parseInt(latestContract.fileno.replace(prefix, "")) || 0;
-      newFileno = `${prefix}${lastNum + 1}`;
+    if (latestContract.length > 0) {
+      const lastNumber = latestContract[0].filenoNumber;
+      newFileno = `${prefix}${lastNumber + 1}`;
     }
 
-    // Create the train
+
+    // Create contract
     const contract = await contractModel.create({
       date,
-      railway, division, trainname, workname, nameofthework, fileno: newFileno, contractNumber, extension, password, startdate, enddate, contractvalue, bg, validity,status,remarks,owner,managername,managerphone
+      railway,
+      division,
+      trainname,
+      workname,
+      nameofthework,
+
+      // Automatically generated
+      fileno: newFileno,
+
+      contractNumber,
+      extension,
+      password,
+      startdate,
+      enddate,
+      contractvalue,
+      bg,
+      validity,
+      status,
+      remarks,
+      owner,
+      managername,
+      managerphone
     });
 
-    // Send success response with the created site
-    res.status(201).send({
+    return res.status(201).send({
       success: true,
       message: "Contract Created Successfully",
-      contract, 
+      contract
     });
+
   } catch (error) {
-    console.log(error);
-    res.status(500).send({
+    console.error("CREATE CONTRACT ERROR:", error);
+
+    return res.status(500).send({
       success: false,
-      error,
-      message: "Error in creating site",
+      message: "Error in creating contract",
+      error: error.message
     });
   }
-};
+}
+
 
 
 

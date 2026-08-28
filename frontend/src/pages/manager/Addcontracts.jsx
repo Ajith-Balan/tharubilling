@@ -291,6 +291,7 @@ const Addcontracts = () => {
                 <div>
                   <label className={labelClass}>Status</label>
                   <select name="status" value={formData.status} onChange={handleChange} className={inputClass}>
+                    <option value="Select">Select</option>
                     <option value="Active">Active</option>
                     <option value="Closed">Closed</option>
                     <option value="Completed">Completed</option>
@@ -299,9 +300,9 @@ const Addcontracts = () => {
 
                     <div>
                   <label className={labelClass}>Sub- if any*</label>
-  <select name="status" value={formData.status} onChange={handleChange} className={inputClass}>
+  <select name="owner" value={formData.owner} onChange={handleChange} className={inputClass}>
                     <option value="">Select</option>
-                    <option value="Closed">SUB</option>
+                    <option value="Sub">SUB</option>
              
                   </select>            
                       </div>

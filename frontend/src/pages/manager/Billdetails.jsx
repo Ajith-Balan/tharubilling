@@ -613,7 +613,9 @@ const Billdetails = () => {
       (Number(bill.tds) || 0) +
       (Number(bill.gsttds) || 0) +
       (Number(bill.penalty) || 0)+
-      (Number(bill.other_deductions) || 0)
+      (Number(bill.other_deductions) || 0)+
+      (Number(bill.cc) || 0)
+      
     )
 
   )}
