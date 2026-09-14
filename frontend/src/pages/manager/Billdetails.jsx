@@ -353,7 +353,9 @@ const Billdetails = () => {
               <div className="space-y-2 border-r border-slate-100 px-4">
                 <div>
                   <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">Total Contract Value</span>
-                  <span className="text-lg font-extrabold text-slate-900 font-mono">₹ {formatCurrency(contract.contractvalue)}</span>
+                  <span className="text-lg font-extrabold text-slate-900 font-mono">₹ {formatCurrency(contract.contractvalue)}</span> <br />
+
+                  <span className="text-lg font-extrabold text-green-900 font-mono">+ ₹{formatCurrency(contract.extendedvalue)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>

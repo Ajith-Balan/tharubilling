@@ -18,6 +18,7 @@ export async function createcontractController(req, res) {
       startdate,
       enddate,
       contractvalue,
+      extendedvalue,
       bg,
       validity,
       status,
@@ -95,6 +96,7 @@ export async function createcontractController(req, res) {
       startdate,
       enddate,
       contractvalue,
+      extendedvalue,
       bg,
       validity,
       status,
@@ -167,8 +169,8 @@ export const bulkCreateContractsController = async (req, res) => {
         enddate: c.enddate || c["End Date"] || (c["End Date"])|| "",
         extension: c.extension || c["Extension"] || "",
         contractvalue: Number(c.contractvalue || c["Contract Value"] || 0),
+        extendedvalue: Number(c.extendedvalue || c["Extended Value"] || 0),
 
-    
         bg: c.bg || c["Bank Guarantee"] || "",
         validity: c.validity || c["Validity Date"] || (c["Validity Date"]) || "",
         status: c.status || c["Status"] || "Active",

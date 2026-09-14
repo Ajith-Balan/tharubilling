@@ -265,24 +265,14 @@ const Addcontracts = () => {
                   <label className={labelClass}>Contract Value</label>
                   <input type="number" name="contractvalue" value={formData.contractvalue} onChange={handleChange} className={inputClass} />
                 </div>
+
                 <div>
-                  <label className={labelClass}>Bank Guarantee</label>
-                  {bgItems.map((item, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                      <input type="text" placeholder="Key" value={item.key} onChange={(e) => handleBgChange(index, "key", e.target.value)} className={`${inputClass} flex-1`} />
-                      <input type="text" placeholder="Value" value={item.value} onChange={(e) => handleBgChange(index, "value", e.target.value)} className={`${inputClass} flex-1`} />
-                      {index === bgItems.length - 1 && (
-                        <button type="button" onClick={addBgItem} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">+</button>
-                      )}
-                      {bgItems.length > 1 && (
-                        <button type="button" onClick={() => removeBgItem(index)} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">×</button>
-                      )}
-                    </div>
-                  ))}
+                  <label className={labelClass}>Extended Value</label>
+                  <input type="number" name="extendedvalue" value={formData.extendedvalue} onChange={handleChange} className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>Validity Date</label>
-                  <input type="date" name="validity" value={formData.validity} onChange={handleChange} className={inputClass} />
+                  <label className={labelClass}>Extension Date</label>
+                  <input type="date" name="extension" value={formData.extension} onChange={handleChange} className={inputClass} />
                 </div>
                 <div>
                   <label className={labelClass}>Password</label>

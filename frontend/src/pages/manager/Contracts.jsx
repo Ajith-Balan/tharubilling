@@ -34,7 +34,7 @@ const Contracts = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [divisionFilter, setDivisionFilter] = useState("All");
   const [subFilter, setSubFilter] = useState("All");
-  const [sortBy, setSortBy] = useState("date-desc");
+  const [sortBy, setSortBy] = useState("all");
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
@@ -55,11 +55,13 @@ const Contracts = () => {
       const res = await axios.get(
         `${import.meta.env.VITE_APP_BACKEND}/api/v1/contracts/getcontracts`
       );
-      // Sort by startdate (newest contract first) as default
-      const sortedContracts = (res.data.contracts || []).sort(
-        (a, b) => new Date(b.startdate || 0) - new Date(a.startdate || 0)
-      );
-      setContracts(sortedContracts);
+const sortedContracts = (res.data.contracts || []).sort(
+  (a, b) =>
+    parseInt(b.fileno?.replace(/\D/g, "") || "0", 10) -
+    parseInt(a.fileno?.replace(/\D/g, "") || "0", 10)
+);
+
+setContracts(sortedContracts);
     } catch (err) {
       console.error("Error fetching contracts:", err);
       toast.error("Failed to load contracts");
@@ -108,11 +110,175 @@ const Contracts = () => {
     }
   }, [auth?.user]);
 
-  const getCompletionPercentage = (totalAmount, contractValue) => {
-    if (!contractValue || contractValue <= 0) return 0;
-    const percentage = (totalAmount / contractValue) * 100;
-    return Math.min(100, Math.max(0, Math.round(percentage)));
-  };
+const getCompletionPercentage = (contract, contractBills = []) => {
+  if (!contract || !contract.contractvalue) return 0;
+
+  const startDate = new Date(contract.startdate);
+
+  const hasExtension =
+    contract.extension &&
+    !isNaN(new Date(contract.extension).getTime());
+
+  const effectiveEndDate = hasExtension
+    ? new Date(contract.extension)
+    : new Date(contract.enddate);
+
+  if (
+    isNaN(startDate.getTime()) ||
+    isNaN(effectiveEndDate.getTime())
+  ) {
+    return 0;
+  }
+
+  // Original contract value + extension value
+  const totalContractValue =
+    Number(contract.contractvalue || 0) +
+    Number(contract.extendedvalue || 0);
+
+  if (totalContractValue <= 0) return 0;
+
+  const today = new Date();
+
+  // --------------------------------------------------
+  // RULE 1:
+  // End date expired and NO extension = 100% completed
+  // --------------------------------------------------
+  if (!hasExtension && today > new Date(contract.enddate)) {
+    return 100;
+  }
+
+  // --------------------------------------------------
+  // Total actual billed amount
+  // --------------------------------------------------
+  const totalBillAmount = contractBills.reduce(
+    (sum, bill) =>
+      sum + Number(bill.totalamount || 0),
+    0
+  );
+
+  // --------------------------------------------------
+  // Contract duration in months
+  // --------------------------------------------------
+  const contractMonths =
+    (effectiveEndDate.getFullYear() -
+      startDate.getFullYear()) *
+      12 +
+    (effectiveEndDate.getMonth() -
+      startDate.getMonth()) +
+    1;
+
+  if (contractMonths <= 0) return 0;
+
+  // --------------------------------------------------
+  // Average monthly contract value
+  // --------------------------------------------------
+  const averageMonthlyValue =
+    totalContractValue / contractMonths;
+
+  // --------------------------------------------------
+  // Find latest billed month
+  // --------------------------------------------------
+  let lastBillDate = null;
+
+  contractBills.forEach((bill) => {
+    const billDate = new Date(
+      bill.billdate ||
+        bill.date ||
+        bill.createdAt ||
+        bill.createddate
+    );
+
+    if (!isNaN(billDate.getTime())) {
+      if (!lastBillDate || billDate > lastBillDate) {
+        lastBillDate = billDate;
+      }
+    }
+  });
+
+  // --------------------------------------------------
+  // Calculate expected/unbilled months
+  // --------------------------------------------------
+  let unbilledMonths = 0;
+
+  const currentMonth = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    1
+  );
+
+  const endMonth = new Date(
+    effectiveEndDate.getFullYear(),
+    effectiveEndDate.getMonth(),
+    1
+  );
+
+  const calculationEnd =
+    currentMonth < endMonth
+      ? currentMonth
+      : endMonth;
+
+  // CASE 1:
+  // No bills -> calculate from contract start month
+  if (!lastBillDate) {
+    const startMonth = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      1
+    );
+
+    if (startMonth <= calculationEnd) {
+      unbilledMonths =
+        (calculationEnd.getFullYear() -
+          startMonth.getFullYear()) *
+          12 +
+        (calculationEnd.getMonth() -
+          startMonth.getMonth()) +
+        1;
+    }
+  }
+
+  // CASE 2:
+  // Bills exist -> calculate months after last billed month
+  else {
+    const nextMonth = new Date(
+      lastBillDate.getFullYear(),
+      lastBillDate.getMonth() + 1,
+      1
+    );
+
+    if (nextMonth <= calculationEnd) {
+      unbilledMonths =
+        (calculationEnd.getFullYear() -
+          nextMonth.getFullYear()) *
+          12 +
+        (calculationEnd.getMonth() -
+          nextMonth.getMonth()) +
+        1;
+    }
+  }
+
+  // --------------------------------------------------
+  // Actual bills + expected amount for unbilled months
+  // --------------------------------------------------
+  const adjustedTotalAmount =
+    totalBillAmount +
+    unbilledMonths * averageMonthlyValue;
+
+  // --------------------------------------------------
+  // Completion %
+  // --------------------------------------------------
+  let percentage =
+    (adjustedTotalAmount / totalContractValue) * 100;
+
+  // Without extension, don't exceed 100%
+  if (!hasExtension) {
+    percentage = Math.min(100, percentage);
+  }
+
+  return Math.max(0, Math.round(percentage));
+};
+
+
 
   const contractPeriods = contracts.map((c) => c.fileno).filter(Boolean);
   const matchedBills = bills.filter((bill) =>
@@ -120,24 +286,25 @@ const Contracts = () => {
   );
 
   const contractNotifications = contracts
-    .filter((contract) => contract.status === "Active")
-    .map((contract) => {
-      const billAmount = matchedBills
-        .filter((bill) => bill.fileno === contract.fileno)
-        .reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
+  .filter((contract) => contract.status === "Active")
+  .map((contract) => {
+    const contractBills = matchedBills.filter(
+      (bill) => bill.fileno === contract.fileno
+    );
 
-      const percentage = getCompletionPercentage(
-        billAmount,
-        Number(contract.contractvalue || 0)
-      );
+    const percentage = getCompletionPercentage(
+      contract,
+      contractBills
+    );
 
-      return {
-        fileno: contract.fileno,
-        contractNumber: contract.contractNumber,
-        percentage,
-      };
-    })
-    .filter((item) => item.percentage >= 100);
+    return {
+      fileno: contract.fileno,
+      contractNumber: contract.contractNumber,
+      percentage,
+    };
+  })
+  .filter((item) => item.percentage >= 100);
+
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -474,7 +641,9 @@ if (
                   setCurrentPage(1);
                 }}
                 className="bg-transparent font-medium text-slate-700 outline-none cursor-pointer text-sm w-full"
-              >
+              > 
+                 <option value="">Select</option>
+
                 <option value="date-desc">Newest Contract First</option>
                 <option value="date-asc">Oldest Contract First</option>
                 <option value="value-desc">Value: High to Low</option>
@@ -600,15 +769,21 @@ if (
   {contract.contractNumber || "N/A"}
 </td>
                         <td className="px-4 py-3 border-r">
-                          ₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}
-                        </td>
+  ₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}
+  {Number(contract.extendedvalue) > 0 && (
+    <div className="underline">
+      + ₹{Number(contract.extendedvalue).toLocaleString("en-IN")}
+    </div>
+  )}
+</td>
                         <td className="px-2 py-2 border-r">
                           {(() => {
                             const contractValue = Number(contract.contractvalue || 0);
                             const bills = matchedBills.filter((b) => b.fileno === contract.fileno);
                             const penalty = bills.reduce((sum, bill) => sum + Number(bill.penalty || 0), 0);
+                            const currentvalue = bills.reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
                             const maxPenalty = contractValue * 0.1;
-                            const percentage = contractValue > 0 ? ((penalty / contractValue) * 100).toFixed(1) : 0;
+                            const percentage = currentvalue > 0 ? ((penalty / currentvalue) * 100).toFixed(1) : 0;
                             const isHighPenalty = Number(percentage) > 4;
 
                             return (
@@ -631,35 +806,64 @@ if (
 </td>
 
                         <td className="px-4 py-3 border-r">
-                          {(() => {
-                            const billAmount = matchedBills
-                              .filter((bill) => bill.fileno === contract.fileno)
-                              .reduce((sum, bill) => sum + (Number(bill.totalamount) || 0), 0);
+                         {(() => {
+  const contractBills = matchedBills.filter(
+    (bill) => bill.fileno === contract.fileno
+  );
 
-                            const percentage = getCompletionPercentage(billAmount, contract.contractvalue);
-                            let color = "bg-red-500";
-                            if (percentage < 25) color = "bg-green-500";
-                            else if (percentage < 50) color = "bg-yellow-500";
-                            else if (percentage < 75) color = "bg-orange-500";
+  const billAmount = contractBills.reduce(
+    (sum, bill) =>
+      sum + (Number(bill.totalamount) || 0),
+    0
+  );
 
-                            return (
-                              <div className="min-w-[180px]" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex justify-between text-xs mb-1">
-                                  <span className="font-medium">{formatDate(contract.enddate)}</span>
-                                  <span className="font-semibold">{percentage}%</span>
-                                </div>
-                                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                  <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${percentage}%` }} />
-                                </div>
-                                <div className="flex items-center justify-between gap-1 mt-1">
-                                  <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                    ₹{billAmount.toLocaleString("en-IN")}
-                                  </span>
-                             
-                                </div>
-                              </div>
-                            );
-                          })()}
+  const percentage = getCompletionPercentage(
+    contract,
+    contractBills
+  );
+
+  let color = "bg-red-500";
+
+  if (percentage < 25) color = "bg-green-500";
+  else if (percentage < 50) color = "bg-yellow-500";
+  else if (percentage < 75) color = "bg-orange-500";
+
+  return (
+    <div
+      className="min-w-[180px]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex justify-between text-xs mb-1">
+        <span className="font-medium">
+          {formatDate(
+            contract.extension || contract.enddate
+          )}
+        </span>
+
+        <span className="font-semibold">
+          {percentage}%
+        </span>
+      </div>
+
+      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${color} transition-all duration-500`}
+          style={{
+            width: `${Math.min(100, percentage)}%`
+          }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-1 mt-1">
+        <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
+          ₹{billAmount.toLocaleString("en-IN")}
+        </span>
+
+       
+      </div>
+    </div>
+  );
+})()}
                         </td>
                         <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold">
                                {/* Extension date only rendered when valid */}
@@ -685,8 +889,14 @@ if (
                     .filter((bill) => bill.fileno === contract.fileno)
                     .reduce((sum, bill) => sum + (Number(bill.totalamount) || 0), 0);
 
-                  const percentage = getCompletionPercentage(billAmount, contract.contractvalue);
-                  let progressColor = "bg-red-500";
+const contractBills = matchedBills.filter(
+  (bill) => bill.fileno === contract.fileno
+);
+
+const percentage = getCompletionPercentage(
+  contract,
+  contractBills
+);                  let progressColor = "bg-red-500";
                   if (percentage < 25) progressColor = "bg-green-500";
                   else if (percentage < 50) progressColor = "bg-yellow-500";
                   else if (percentage < 75) progressColor = "bg-orange-500";

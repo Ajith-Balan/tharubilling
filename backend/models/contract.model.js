@@ -41,6 +41,9 @@ const contractschema = new mongoose.Schema(
     extension: {
       type: String,
     },
+    extendedvalue: {
+      type: Number,
+    },
 
     contractvalue: {
       type: Number,
