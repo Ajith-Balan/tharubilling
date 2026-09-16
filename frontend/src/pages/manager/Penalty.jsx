@@ -25,6 +25,7 @@ const Penalty = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [penaltyFilter, setPenaltyFilter] = useState("All"); 
   const [divisionFilter, setDivisionFilter] = useState("All");
+  const [ownerFilter, setOwnerFilter] = useState("All"); // "All", "Sub Only", "Remove Sub"
   const [viewModeFilter, setViewModeFilter] = useState("All"); // All, HighContractPenalty, HasBills
   const [sortBy, setSortBy] = useState("date-desc");
   const [startDate, setStartDate] = useState("");

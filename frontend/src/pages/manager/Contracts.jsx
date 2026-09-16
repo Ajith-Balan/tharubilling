@@ -109,176 +109,73 @@ setContracts(sortedContracts);
       fetchBills();
     }
   }, [auth?.user]);
+const getCompletionPercentage = (contract) => {
+  if (!contract || !contract.startdate || !contract.enddate) return 0;
 
-const getCompletionPercentage = (contract, contractBills = []) => {
-  if (!contract || !contract.contractvalue) return 0;
+  // Standardize dates to zero-time local dates to prevent timezone bugs
+  const parseZeroTimeDate = (dateStr) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
 
-  const startDate = new Date(contract.startdate);
+  const startDay = parseZeroTimeDate(contract.startdate);
+  const origEndDay = parseZeroTimeDate(contract.enddate);
 
-  const hasExtension =
-    contract.extension &&
-    !isNaN(new Date(contract.extension).getTime());
-
-  const effectiveEndDate = hasExtension
-    ? new Date(contract.extension)
-    : new Date(contract.enddate);
-
-  if (
-    isNaN(startDate.getTime()) ||
-    isNaN(effectiveEndDate.getTime())
-  ) {
-    return 0;
-  }
-
-  // Original contract value + extension value
-  const totalContractValue =
-    Number(contract.contractvalue || 0) +
-    Number(contract.extendedvalue || 0);
-
-  if (totalContractValue <= 0) return 0;
+  if (!startDay || !origEndDay) return 0;
 
   const today = new Date();
+  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  // --------------------------------------------------
-  // RULE 1:
-  // End date expired and NO extension = 100% completed
-  // --------------------------------------------------
-  if (!hasExtension && today > new Date(contract.enddate)) {
-    return 100;
-  }
+  // Not started yet
+  if (todayDay < startDay) return 0;
 
-  // --------------------------------------------------
-  // Total actual billed amount
-  // --------------------------------------------------
-  const totalBillAmount = contractBills.reduce(
-    (sum, bill) =>
-      sum + Number(bill.totalamount || 0),
-    0
-  );
+  const hasExtension =
+    contract.extension && !isNaN(new Date(contract.extension).getTime());
+  const extEndDay = hasExtension ? parseZeroTimeDate(contract.extension) : null;
 
-  // --------------------------------------------------
-  // Contract duration in months
-  // --------------------------------------------------
-  const contractMonths =
-    (effectiveEndDate.getFullYear() -
-      startDate.getFullYear()) *
-      12 +
-    (effectiveEndDate.getMonth() -
-      startDate.getMonth()) +
-    1;
+  // Determine the final active target date (Extension date if exists, else Original End Date)
+  const effectiveEndDay = extEndDay || origEndDay;
 
-  if (contractMonths <= 0) return 0;
+  // -------------------------------------------------------------------
+  // RULE 1: IF TODAY HAS REACHED OR PASSED THE FINAL DATE -> 100%+
+  // -------------------------------------------------------------------
+  if (todayDay >= effectiveEndDay) {
+    if (!extEndDay) {
+      return 100; // No extension -> 100% on or after end date
+    }
 
-  // --------------------------------------------------
-  // Average monthly contract value
-  // --------------------------------------------------
-  const averageMonthlyValue =
-    totalContractValue / contractMonths;
-
-  // --------------------------------------------------
-  // Find latest billed month
-  // --------------------------------------------------
-  let lastBillDate = null;
-
-  contractBills.forEach((bill) => {
-    const billDate = new Date(
-      bill.billdate ||
-        bill.date ||
-        bill.createdAt ||
-        bill.createddate
+    // Has extension and extension date expired -> Calculate final extended % relative to original timeline
+    const originalDurationDays = Math.max(
+      1,
+      Math.floor((origEndDay - startDay) / (1000 * 60 * 60 * 24))
+    );
+    const totalExtendedDays = Math.max(
+      1,
+      Math.floor((extEndDay - startDay) / (1000 * 60 * 60 * 24))
     );
 
-    if (!isNaN(billDate.getTime())) {
-      if (!lastBillDate || billDate > lastBillDate) {
-        lastBillDate = billDate;
-      }
-    }
-  });
-
-  // --------------------------------------------------
-  // Calculate expected/unbilled months
-  // --------------------------------------------------
-  let unbilledMonths = 0;
-
-  const currentMonth = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    1
-  );
-
-  const endMonth = new Date(
-    effectiveEndDate.getFullYear(),
-    effectiveEndDate.getMonth(),
-    1
-  );
-
-  const calculationEnd =
-    currentMonth < endMonth
-      ? currentMonth
-      : endMonth;
-
-  // CASE 1:
-  // No bills -> calculate from contract start month
-  if (!lastBillDate) {
-    const startMonth = new Date(
-      startDate.getFullYear(),
-      startDate.getMonth(),
-      1
+    const maxExtendedPercentage = Math.round(
+      (totalExtendedDays / originalDurationDays) * 100
     );
 
-    if (startMonth <= calculationEnd) {
-      unbilledMonths =
-        (calculationEnd.getFullYear() -
-          startMonth.getFullYear()) *
-          12 +
-        (calculationEnd.getMonth() -
-          startMonth.getMonth()) +
-        1;
-    }
+    // Ensure expired extended contracts never evaluate below 100%
+    return Math.max(100, maxExtendedPercentage);
   }
 
-  // CASE 2:
-  // Bills exist -> calculate months after last billed month
-  else {
-    const nextMonth = new Date(
-      lastBillDate.getFullYear(),
-      lastBillDate.getMonth() + 1,
-      1
-    );
+  // -------------------------------------------------------------------
+  // RULE 2: CONTRACT IS CURRENTLY ACTIVE (RUNNING)
+  // -------------------------------------------------------------------
+  const originalDurationDays = Math.max(
+    1,
+    Math.floor((origEndDay - startDay) / (1000 * 60 * 60 * 24))
+  );
+  const elapsedDays = Math.floor((todayDay - startDay) / (1000 * 60 * 60 * 24));
 
-    if (nextMonth <= calculationEnd) {
-      unbilledMonths =
-        (calculationEnd.getFullYear() -
-          nextMonth.getFullYear()) *
-          12 +
-        (calculationEnd.getMonth() -
-          nextMonth.getMonth()) +
-        1;
-    }
-  }
+  const currentPercentage = Math.round((elapsedDays / originalDurationDays) * 100);
 
-  // --------------------------------------------------
-  // Actual bills + expected amount for unbilled months
-  // --------------------------------------------------
-  const adjustedTotalAmount =
-    totalBillAmount +
-    unbilledMonths * averageMonthlyValue;
-
-  // --------------------------------------------------
-  // Completion %
-  // --------------------------------------------------
-  let percentage =
-    (adjustedTotalAmount / totalContractValue) * 100;
-
-  // Without extension, don't exceed 100%
-  if (!hasExtension) {
-    percentage = Math.min(100, percentage);
-  }
-
-  return Math.max(0, Math.round(percentage));
+  return Math.max(0, currentPercentage);
 };
-
-
 
   const contractPeriods = contracts.map((c) => c.fileno).filter(Boolean);
   const matchedBills = bills.filter((bill) =>
@@ -415,17 +312,23 @@ if (
 
       return {
         "File No": c.fileno || "N/A",
-        Division: c.division || "N/A",
+        "Railway": c.railway ,
+        "Division": c.division || "N/A",
         "Name of Work": c.workname || "N/A",
-        Manager: c.managername || "N/A",
-        Owner: c.owner || "N/A",
+        "trainname" : c.trainname,
         "Contract Number": c.contractNumber || "N/A",
-        "Contract Value (₹)": Number(c.contractvalue || 0),
-        "Total Penalty (₹)": totalPenalty,
+        "Date": c.date,
+
         "Start Date": formatDate(c.startdate),
         "End Date": formatDate(c.enddate),
-        "Extended Date": c.extension ? formatDate(c.extension) : "N/A",
+         "Extended Date": c.extension ? formatDate(c.extension) : "N/A",
+
+        "Contract Value (₹)": Number(c.contractvalue || 0),
+        "Total Penalty (₹)": totalPenalty,
+   
         Status: c.status || "N/A",
+          Manager: c.managername || "N/A",
+        Owner: c.owner || "N/A"
       };
     });
 
@@ -435,6 +338,90 @@ if (
     XLSX.writeFile(workbook, "Contracts_Data.xlsx");
     toast.success("Excel sheet downloaded successfully!");
   };
+
+
+
+  // Calculate Aggregate Metrics across all contracts
+const aggregateMetrics = contracts.reduce(
+  (acc, contract) => {
+    const contractBills = matchedBills.filter(
+      (bill) => bill.fileno === contract.fileno
+    );
+
+    // 1. Actual Billed Amount
+    const billAmount = contractBills.reduce(
+      (sum, bill) => sum + (Number(bill.totalamount) || 0),
+      0
+    );
+
+    // 2. Dates setup
+    const parseZeroTimeDate = (dateStr) => {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      return isNaN(d.getTime())
+        ? null
+        : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    };
+
+    const startDay = parseZeroTimeDate(contract.startdate);
+    const endDay = parseZeroTimeDate(contract.extension || contract.enddate);
+    const today = new Date();
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const isExpired = endDay ? todayDay >= endDay : false;
+    const totalContractValue =
+      Number(contract.contractvalue || 0) + Number(contract.extendedvalue || 0);
+
+    let currentBillableValue = billAmount;
+
+    if (!isExpired && startDay && endDay && totalContractValue > 0) {
+      const totalContractDays =
+        Math.floor((endDay - startDay) / (1000 * 60 * 60 * 24)) + 1;
+
+      if (totalContractDays > 0) {
+        const dailyExpectedAmount = totalContractValue / totalContractDays;
+
+        let lastBillDate = null;
+        contractBills.forEach((bill) => {
+          const billDate = parseZeroTimeDate(
+            bill.billdate || bill.date || bill.createdAt || bill.createddate
+          );
+          if (billDate && (!lastBillDate || billDate > lastBillDate)) {
+            lastBillDate = billDate;
+          }
+        });
+
+        const calculationEndDay = todayDay < endDay ? todayDay : endDay;
+        const expectedStartDay = lastBillDate
+          ? new Date(
+              lastBillDate.getFullYear(),
+              lastBillDate.getMonth(),
+              lastBillDate.getDate() + 1
+            )
+          : startDay;
+
+        let unbilledDays = 0;
+        if (expectedStartDay <= calculationEndDay) {
+          unbilledDays =
+            Math.floor(
+              (calculationEndDay - expectedStartDay) / (1000 * 60 * 60 * 24)
+            ) + 1;
+        }
+
+        currentBillableValue = billAmount + unbilledDays * dailyExpectedAmount;
+      }
+    }
+
+    const balanceToBill = Math.max(0, totalContractValue - currentBillableValue);
+
+    acc.totalBilled += billAmount;
+    acc.totalBillableToDate += currentBillableValue;
+    acc.totalBalanceToBill += balanceToBill;
+
+    return acc;
+  },
+  { totalBilled: 0, totalBillableToDate: 0, totalBalanceToBill: 0 }
+);
 
   if (loading) {
     return (
@@ -518,6 +505,34 @@ if (
               </h2>
               <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Inactive</p>
             </div>
+
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-5 text-white shadow-lg">
+    <p className="text-xs sm:text-sm font-medium opacity-90">Total Billed</p>
+    <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
+      ₹{Math.round(aggregateMetrics.totalBilled).toLocaleString("en-IN")}
+    </h2>
+    <p className="text-[10px] sm:text-xs mt-2 opacity-80">Actual Billed Amount</p>
+  </div>
+
+  {/* Total Billable To Date Card */}
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 p-4 sm:p-5 text-white shadow-lg">
+    <p className="text-xs sm:text-sm font-medium opacity-90">Billable To-Date</p>
+    <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
+      ₹{Math.round(aggregateMetrics.totalBillableToDate).toLocaleString("en-IN")}
+    </h2>
+    <p className="text-[10px] sm:text-xs mt-2 opacity-80">
+      Billed + Projected to Today
+    </p>
+  </div>
+
+  {/* Total Balance To Be Billed Card */}
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 sm:p-5 text-white shadow-lg">
+    <p className="text-xs sm:text-sm font-medium opacity-90">Balance To Be Billed</p>
+    <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
+      ₹{Math.round(aggregateMetrics.totalBalanceToBill).toLocaleString("en-IN")}
+    </h2>
+    <p className="text-[10px] sm:text-xs mt-2 opacity-80">Remaining Contract Value</p>
+  </div>
           </div>
 
           <div className="flex justify-end mb-4">
@@ -805,66 +820,146 @@ if (
   {formatDate(contract.startdate)}
 </td>
 
-                        <td className="px-4 py-3 border-r">
-                         {(() => {
-  const contractBills = matchedBills.filter(
-    (bill) => bill.fileno === contract.fileno
-  );
+                       <td className="px-4 py-3 border-r">
+  {(() => {
+    const contractBills = matchedBills.filter(
+      (bill) => bill.fileno === contract.fileno
+    );
 
-  const billAmount = contractBills.reduce(
-    (sum, bill) =>
-      sum + (Number(bill.totalamount) || 0),
-    0
-  );
+    // 1. Actual Billed Amount
+    const billAmount = contractBills.reduce(
+      (sum, bill) => sum + (Number(bill.totalamount) || 0),
+      0
+    );
 
-  const percentage = getCompletionPercentage(
-    contract,
-    contractBills
-  );
+    const percentage = getCompletionPercentage(contract, contractBills);
 
-  let color = "bg-red-500";
+    // 2. Date Parsers & Basic Values
+    const parseZeroTimeDate = (dateStr) => {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      return isNaN(d.getTime())
+        ? null
+        : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    };
 
-  if (percentage < 25) color = "bg-green-500";
-  else if (percentage < 50) color = "bg-yellow-500";
-  else if (percentage < 75) color = "bg-orange-500";
+    const startDay = parseZeroTimeDate(contract.startdate);
+    const endDay = parseZeroTimeDate(contract.extension || contract.enddate);
+    const today = new Date();
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  return (
-    <div
-      className="min-w-[180px]"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex justify-between text-xs mb-1">
-        <span className="font-medium">
-          {formatDate(
-            contract.extension || contract.enddate
-          )}
-        </span>
+    const isExpired = endDay ? todayDay >= endDay : false;
 
-        <span className="font-semibold">
-          {percentage}%
-        </span>
+    // 3. Contract Value & Duration Calculations
+    const totalContractValue =
+      Number(contract.contractvalue || 0) + Number(contract.extendedvalue || 0);
+
+    let currentBillableValue = billAmount;
+    let balanceToBill = Math.max(0, totalContractValue - billAmount);
+
+    if (startDay && endDay && totalContractValue > 0) {
+      const totalContractDays =
+        Math.floor((endDay - startDay) / (1000 * 60 * 60 * 24)) + 1;
+
+      if (totalContractDays > 0) {
+        // Daily expected value based on total contract value
+        const dailyExpectedAmount = totalContractValue / totalContractDays;
+
+        // Find latest bill date
+        let lastBillDate = null;
+        contractBills.forEach((bill) => {
+          const billDate = parseZeroTimeDate(
+            bill.billdate || bill.date || bill.createdAt || bill.createddate
+          );
+          if (billDate && (!lastBillDate || billDate > lastBillDate)) {
+            lastBillDate = billDate;
+          }
+        });
+
+        // Determine calculation window for unbilled days
+        const calculationEndDay = todayDay < endDay ? todayDay : endDay;
+        const expectedStartDay = lastBillDate
+          ? new Date(
+              lastBillDate.getFullYear(),
+              lastBillDate.getMonth(),
+              lastBillDate.getDate() + 1
+            )
+          : startDay;
+
+        let unbilledDays = 0;
+        if (expectedStartDay <= calculationEndDay) {
+          unbilledDays =
+            Math.floor(
+              (calculationEndDay - expectedStartDay) / (1000 * 60 * 60 * 24)
+            ) + 1;
+        }
+
+        // Current Billable Value = Actual Billed + Projected Unbilled Days to Today
+        currentBillableValue = billAmount + unbilledDays * dailyExpectedAmount;
+
+        // Balance Remaining based on Current Billable Value
+        balanceToBill = Math.max(0, totalContractValue - currentBillableValue);
+      }
+    }
+
+    // Color logic
+    let color = "bg-green-500";
+    if (percentage >= 100) color = "bg-purple-600";
+    else if (percentage >= 75) color = "bg-red-500";
+    else if (percentage >= 50) color = "bg-orange-500";
+    else if (percentage >= 25) color = "bg-yellow-500";
+
+    return (
+      <div className="min-w-[200px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between text-xs mb-1">
+          <span className="font-medium">
+            {formatDate(contract.extension || contract.enddate)}
+          </span>
+          <span
+            className={`font-semibold ${
+              percentage > 100 ? "text-purple-700" : "text-slate-700"
+            }`}
+          >
+            {percentage}%
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${color} transition-all duration-500`}
+            style={{ width: `${Math.min(100, percentage)}%` }}
+          />
+        </div>
+
+        {/* Billed Amount Badge */}
+        <div className="flex items-center justify-between gap-1 mt-1.5">
+          <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+            Billed: ₹{billAmount.toLocaleString("en-IN")}
+          </span>
+        </div>
+
+        {/* Active Contract Analytics */}
+        {!isExpired && (
+          <div className="mt-2 pt-1.5 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Billable To-Date:</span>
+              <span className="font-semibold text-slate-800">
+                ₹{Math.round(currentBillableValue).toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Balance:</span>
+              <span className="font-semibold text-emerald-700">
+                ₹{Math.round(balanceToBill).toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
-
-      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${color} transition-all duration-500`}
-          style={{
-            width: `${Math.min(100, percentage)}%`
-          }}
-        />
-      </div>
-
-      <div className="flex items-center justify-between gap-1 mt-1">
-        <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
-          ₹{billAmount.toLocaleString("en-IN")}
-        </span>
-
-       
-      </div>
-    </div>
-  );
-})()}
-                        </td>
+    );
+  })()}
+</td>
                         <td className="px-4 py-3 border-r whitespace-nowrap text-center font-semibold">
                                {/* Extension date only rendered when valid */}
                                   {contract.extension && (

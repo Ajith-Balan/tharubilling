@@ -18,6 +18,7 @@ const BillHistory = () => {
   // Filter and Sort states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [ownerFilter, setOwnerFilter] = useState("All"); // "All", "Sub Only", "Remove Sub"
   
   const [penaltyFilter, setPenaltyFilter] = useState("All"); 
   const [divisionFilter, setDivisionFilter] = useState("All");
@@ -121,8 +122,7 @@ const BillHistory = () => {
     });
     return Array.from(divisions).sort();
   }, [contractsMap]);
-
-  const filteredAndSortedBills = useMemo(() => {
+const filteredAndSortedBills = useMemo(() => {
     let result = [...bills];
 
     if (searchQuery.trim() !== "") {
@@ -133,35 +133,44 @@ const BillHistory = () => {
       );
     }
 
-if (statusFilter !== "All") {
-  if (statusFilter === "E-Invoice_Pending") {
-    result = result.filter((bill) => {
-      const hasEInvoiceDate = Boolean(bill.einvoicedate);
-      
-      const rawPassed = String(bill.amountpssd ?? "").trim();
-      const isPassedAmountEmpty = rawPassed === "" || rawPassed === "0" || Number(rawPassed) === 0;
+    if (statusFilter !== "All") {
+      if (statusFilter === "E-Invoice_Pending") {
+        result = result.filter((bill) => {
+          const hasEInvoiceDate = Boolean(bill.einvoicedate);
+          const rawPassed = String(bill.amountpssd ?? "").trim();
+          const isPassedAmountEmpty = rawPassed === "" || rawPassed === "0" || Number(rawPassed) === 0;
+          const isPendingStatus = (bill.status || "pending").toLowerCase() === "pending";
 
-      const isPendingStatus = (bill.status || "pending").toLowerCase() === "pending";
-
-      return hasEInvoiceDate && isPassedAmountEmpty && isPendingStatus;
-    });
-  } else {
-   result = result.filter((bill) => 
-      (bill.status || "pending").toLowerCase() === statusFilter.toLowerCase()
-    );
-  }
- 
-}
-
-
-
-
- 
+          return hasEInvoiceDate && isPassedAmountEmpty && isPendingStatus;
+        });
+      } else {
+        result = result.filter((bill) => 
+          (bill.status || "pending").toLowerCase() === statusFilter.toLowerCase()
+        );
+      }
+    }
 
     if (divisionFilter !== "All") {
       result = result.filter((bill) => {
         const contract = contractsMap[bill.fileno];
         return contract && contract.division === divisionFilter;
+      });
+    }
+
+    // Filter bills based on Owner filter ("All", "Sub Only", "Remove Sub")
+    if (ownerFilter !== "All") {
+      result = result.filter((bill) => {
+        const contract = contractsMap[bill.fileno];
+        if (!contract) return false;
+        const owner = (contract.owner || "").toString().trim().toLowerCase();
+        
+        if (ownerFilter === "Sub Only") {
+          return owner === "sub";
+        }
+        if (ownerFilter === "Remove Sub") {
+          return owner !== "sub";
+        }
+        return true;
       });
     }
 
@@ -185,7 +194,7 @@ if (statusFilter !== "All") {
     });
 
     return result;
-  }, [bills, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate, contractsMap]);
+  }, [bills, searchQuery, statusFilter, penaltyFilter, divisionFilter, sortBy, startDate, endDate, contractsMap, ownerFilter]);
 
   const contractFilteredBills = useMemo(() => {
     if (contractTab === "All") return filteredAndSortedBills;
@@ -656,22 +665,52 @@ const getPendingBillStatus = (bills, statusFilter) => {
             </div>
 
             {/* CONTRACT STATUS TABS */}
-            <div className="flex gap-2 mb-6">
-              {["All", "Active", "Closed", "Completed"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setContractTab(tab);
-                    setCurrentPage(1);
-                  }}
-                  className={`px-5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-                    contractTab === tab ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+        {/* OWNER FILTER BUTTONS & CONTRACT STATUS TABS */}
+<div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+  {/* Owner Filter Toggle */}
+  <div className="flex items-center bg-white border border-slate-200 p-1 rounded-xl shadow-sm gap-1">
+    {[
+      { label: "All", value: "All" },
+      { label: "Sub Only", value: "Sub Only" },
+      { label: "Remove Sub", value: "Remove Sub" },
+    ].map((item) => (
+      <button
+        key={item.value}
+        onClick={() => {
+          setOwnerFilter(item.value);
+          setCurrentPage(1);
+        }}
+        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+          ownerFilter === item.value
+            ? "bg-slate-800 text-white shadow"
+            : "text-slate-600 hover:bg-slate-100"
+        }`}
+      >
+        {item.label}
+      </button>
+    ))}
+  </div>
+
+  {/* Status Tabs */}
+  <div className="flex gap-2">
+    {["All", "Active", "Closed", "Completed"].map((tab) => (
+      <button
+        key={tab}
+        onClick={() => {
+          setContractTab(tab);
+          setCurrentPage(1);
+        }}
+        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+          contractTab === tab
+            ? "bg-indigo-600 text-white shadow"
+            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+        }`}
+      >
+        {tab}
+      </button>
+    ))}
+  </div>
+</div>
 
             {/* WORKBOOK BUNDLES GRID */}
             {paginatedContracts.length === 0 ? (
