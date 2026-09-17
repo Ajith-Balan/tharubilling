@@ -109,6 +109,57 @@ setContracts(sortedContracts);
       fetchBills();
     }
   }, [auth?.user]);
+
+  // 1. Date-Wise Progress (Time Elapsed)
+const getDateCompletionPercentage = (contract) => {
+  if (!contract || !contract.startdate || !contract.enddate) return 0;
+
+  const parseZeroTimeDate = (dateStr) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+
+  const startDay = parseZeroTimeDate(contract.startdate);
+  const origEndDay = parseZeroTimeDate(contract.enddate);
+  if (!startDay || !origEndDay) return 0;
+
+  const today = new Date();
+  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (todayDay < startDay) return 0;
+
+  const hasExtension = contract.extension && !isNaN(new Date(contract.extension).getTime());
+  const extEndDay = hasExtension ? parseZeroTimeDate(contract.extension) : null;
+  const effectiveEndDay = extEndDay || origEndDay;
+
+  if (todayDay >= effectiveEndDay) {
+    if (!extEndDay) return 100;
+    const originalDurationDays = Math.max(1, Math.floor((origEndDay - startDay) / (1000 * 60 * 60 * 24)));
+    const totalExtendedDays = Math.max(1, Math.floor((extEndDay - startDay) / (1000 * 60 * 60 * 24)));
+    return Math.max(100, Math.round((totalExtendedDays / originalDurationDays) * 100));
+  }
+
+  const originalDurationDays = Math.max(1, Math.floor((origEndDay - startDay) / (1000 * 60 * 60 * 24)));
+  const elapsedDays = Math.floor((todayDay - startDay) / (1000 * 60 * 60 * 24));
+
+  return Math.max(0, Math.round((elapsedDays / originalDurationDays) * 100));
+};
+
+// 2. Billed-To-Date Progress (Financial % Billed vs Contract Value)
+const getBilledCompletionPercentage = (contract, contractBills = []) => {
+  const contractValue = Number(contract?.contractvalue) || 0;
+  if (contractValue <= 0) return 0;
+
+  // Calculate total gross billed amount from passed/valid bills
+  const totalBilled = contractBills.reduce(
+    (sum, b) => sum + (Number(b.totalamount) || 0),
+    0
+  );
+
+  return Math.min(100, Math.round((totalBilled / contractValue) * 100));
+};
+  
 const getCompletionPercentage = (contract) => {
   if (!contract || !contract.startdate || !contract.enddate) return 0;
 
@@ -820,21 +871,13 @@ const aggregateMetrics = contracts.reduce(
   {formatDate(contract.startdate)}
 </td>
 
-                       <td className="px-4 py-3 border-r">
+                      <td className="px-4 py-3 border-r">
   {(() => {
     const contractBills = matchedBills.filter(
       (bill) => bill.fileno === contract.fileno
     );
 
-    // 1. Actual Billed Amount
-    const billAmount = contractBills.reduce(
-      (sum, bill) => sum + (Number(bill.totalamount) || 0),
-      0
-    );
-
-    const percentage = getCompletionPercentage(contract, contractBills);
-
-    // 2. Date Parsers & Basic Values
+    // 1. Date Parsers & Basic Values
     const parseZeroTimeDate = (dateStr) => {
       if (!dateStr) return null;
       const d = new Date(dateStr);
@@ -850,10 +893,16 @@ const aggregateMetrics = contracts.reduce(
 
     const isExpired = endDay ? todayDay >= endDay : false;
 
-    // 3. Contract Value & Duration Calculations
+    // 2. Financial & Contract Value Calculations
     const totalContractValue =
       Number(contract.contractvalue || 0) + Number(contract.extendedvalue || 0);
 
+    const billAmount = contractBills.reduce(
+      (sum, bill) => sum + (Number(bill.totalamount) || 0),
+      0
+    );
+
+    // 3. Projected Billable To-Date & Balance Calculations
     let currentBillableValue = billAmount;
     let balanceToBill = Math.max(0, totalContractValue - billAmount);
 
@@ -862,10 +911,8 @@ const aggregateMetrics = contracts.reduce(
         Math.floor((endDay - startDay) / (1000 * 60 * 60 * 24)) + 1;
 
       if (totalContractDays > 0) {
-        // Daily expected value based on total contract value
         const dailyExpectedAmount = totalContractValue / totalContractDays;
 
-        // Find latest bill date
         let lastBillDate = null;
         contractBills.forEach((bill) => {
           const billDate = parseZeroTimeDate(
@@ -876,7 +923,6 @@ const aggregateMetrics = contracts.reduce(
           }
         });
 
-        // Determine calculation window for unbilled days
         const calculationEndDay = todayDay < endDay ? todayDay : endDay;
         const expectedStartDay = lastBillDate
           ? new Date(
@@ -894,54 +940,95 @@ const aggregateMetrics = contracts.reduce(
             ) + 1;
         }
 
-        // Current Billable Value = Actual Billed + Projected Unbilled Days to Today
         currentBillableValue = billAmount + unbilledDays * dailyExpectedAmount;
-
-        // Balance Remaining based on Current Billable Value
         balanceToBill = Math.max(0, totalContractValue - currentBillableValue);
       }
     }
 
-    // Color logic
-    let color = "bg-green-500";
-    if (percentage >= 100) color = "bg-purple-600";
-    else if (percentage >= 75) color = "bg-red-500";
-    else if (percentage >= 50) color = "bg-orange-500";
-    else if (percentage >= 25) color = "bg-yellow-500";
+    // 4. Progress Percentages
+    // Timeline Completion Percentage
+    let datePercentage = 0;
+    if (startDay && endDay) {
+      if (todayDay < startDay) {
+        datePercentage = 0;
+      } else if (todayDay >= endDay) {
+        datePercentage = 100;
+      } else {
+        const totalDurationDays = Math.max(1, Math.floor((endDay - startDay) / (1000 * 60 * 60 * 24)));
+        const elapsedDays = Math.floor((todayDay - startDay) / (1000 * 60 * 60 * 24));
+        datePercentage = Math.round((elapsedDays / totalDurationDays) * 100);
+      }
+    }
+
+    // Financial Progress Percentage (Based on Billable To-Date Value)
+    const billablePercentage = totalContractValue > 0 
+      ? Math.round((currentBillableValue / totalContractValue) * 100) 
+      : 0;
+
+    // Progress Bar Color Logic
+    const getDateColor = (pct) => {
+      if (pct >= 100) return "bg-purple-600";
+      if (pct >= 75) return "bg-red-500";
+      if (pct >= 50) return "bg-orange-500";
+      return "bg-indigo-600";
+    };
+
+    const getBillableColor = (pct) => {
+      if (pct >= 100) return "bg-emerald-600";
+      if (pct >= 75) return "bg-teal-500";
+      if (pct >= 50) return "bg-blue-500";
+      return "bg-sky-500";
+    };
 
     return (
-      <div className="min-w-[200px]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between text-xs mb-1">
-          <span className="font-medium">
-            {formatDate(contract.extension || contract.enddate)}
-          </span>
-          <span
-            className={`font-semibold ${
-              percentage > 100 ? "text-purple-700" : "text-slate-700"
-            }`}
-          >
-            {percentage}%
-          </span>
+      <div className="min-w-[220px] space-y-3" onClick={(e) => e.stopPropagation()}>
+        
+        {/* 1. Timeline Progress Bar (Date-wise) */}
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="font-medium text-slate-500">
+              Timeline ({formatDate( contract.enddate)})
+            </span>
+            <span className="font-semibold text-slate-700">
+              {datePercentage}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${getDateColor(datePercentage)} transition-all duration-500`}
+              style={{ width: `${Math.min(100, datePercentage)}%` }}
+            />
+          </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-          <div
-            className={`h-full ${color} transition-all duration-500`}
-            style={{ width: `${Math.min(100, percentage)}%` }}
-          />
+        {/* 2. Billable To-Date Progress Bar (Financial-wise) */}
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="font-medium text-slate-500">
+              Billable To-Date
+            </span>
+            <span className="font-semibold text-emerald-700">
+              {billablePercentage}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${getBillableColor(billablePercentage)} transition-all duration-500`}
+              style={{ width: `${Math.min(100, billablePercentage)}%` }}
+            />
+          </div>
         </div>
 
         {/* Billed Amount Badge */}
-        <div className="flex items-center justify-between gap-1 mt-1.5">
-          <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+        <div className="flex items-center justify-between gap-1 pt-1">
+          <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-xs font-semibold">
             Billed: ₹{billAmount.toLocaleString("en-IN")}
           </span>
         </div>
 
         {/* Active Contract Analytics */}
         {!isExpired && (
-          <div className="mt-2 pt-1.5 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
+          <div className="pt-1.5 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
             <div className="flex justify-between items-center">
               <span className="text-slate-400">Billable To-Date:</span>
               <span className="font-semibold text-slate-800">
