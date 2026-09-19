@@ -65,6 +65,7 @@ function App() {
           <Route path='manager' element={<Managerhome />} />
           <Route path='manager/bills/:fileno' element={<Billdetails />} />
          <Route path='manager/addbills' element={<Addbill />} />
+         <Route path='manager/addbills/:fileno' element={<Addbill />} />
          <Route path='manager/createcontracts' element={<Addcontracts />} />
          <Route path='manager/contracts' element={<Contracts />} />
         <Route path='manager/billdetails' element={<BillHistory />} />

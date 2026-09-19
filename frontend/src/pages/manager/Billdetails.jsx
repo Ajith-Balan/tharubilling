@@ -285,7 +285,7 @@ const Billdetails = () => {
 
               <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
                 <Link
-                  to="/dashboard/manager/addbills"
+                  to={`/dashboard/manager/addbills/${contract.fileno}`}
                   className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-150"
                 >
                   <FaPlus size={14} /> 

@@ -4,8 +4,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/Auth";
 import * as XLSX from "xlsx";
-
+import { useParams } from "react-router-dom";
 const Addbill = () => {
+  const {fileno} = useParams()
   const [auth] = useAuth();
 
   const initialState = {
@@ -289,7 +290,7 @@ const Addbill = () => {
                     <input
                       type="text"
                       name="fileno"
-                      value={auth?.user?.fileno || formData.fileno}
+                      value={auth?.user?.fileno || formData.fileno || fileno}
                       onChange={handleChange}
                       required
                       className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
