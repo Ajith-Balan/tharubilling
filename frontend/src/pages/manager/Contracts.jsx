@@ -15,7 +15,7 @@ import {
   FaBell,
   FaFileExcel,
 } from "react-icons/fa";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../../components/layout/BackButton";
 
@@ -356,49 +356,1127 @@ const Contracts = () => {
     Pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
   };
 
-  // Export to Excel
-  const exportToExcel = () => {
-    if (sortedContracts.length === 0) {
-      toast.warn("No data available to export");
-      return;
-    }
 
-    const exportData = sortedContracts.map((c) => {
-      const contractBills = matchedBills.filter((b) => b.fileno === c.fileno);
-      const totalPenalty = contractBills.reduce(
-        (sum, b) => sum + (Number(b.penalty) || 0),
-        0
+const exportToExcel = async () => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = "THARU & SONS";
+    workbook.lastModifiedBy = "THARU & SONS";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    // =========================================================
+    // COLORS
+    // =========================================================
+
+    const COLORS = {
+      yellow: "FFC000",
+      darkYellow: "E6B800",
+      orange: "F4B183",
+      lightYellow: "FFF2CC",
+      green: "C6E0B4",
+      lightGreen: "E2F0D9",
+      red: "FF0000",
+      blue: "0000FF",
+      black: "000000",
+      white: "FFFFFF",
+      grey: "D9E1F2",
+    };
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+
+    const border = {
+      top: { style: "thin", color: { argb: "000000" } },
+      left: { style: "thin", color: { argb: "000000" } },
+      bottom: { style: "thin", color: { argb: "000000" } },
+      right: { style: "thin", color: { argb: "000000" } },
+    };
+
+    const moneyFormat = '#,##0';
+    const percentageFormat = '0.00%';
+
+    const safeNumber = (value) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const formatDate = (value) => {
+      if (!value) return "";
+
+      const d = new Date(value);
+
+      if (Number.isNaN(d.getTime())) return value;
+
+      return d;
+    };
+
+    // Excel sheet names cannot contain these characters
+    const makeSheetName = (name, usedNames) => {
+      let base = String(name || "Contract")
+        .replace(/[:\\/?*\[\]]/g, "-")
+        .replace(/^'+|'+$/g, "")
+        .substring(0, 31);
+
+      if (!base) base = "Contract";
+
+      let result = base;
+      let counter = 1;
+
+      while (usedNames.has(result)) {
+        const suffix = `-${counter++}`;
+        result =
+          base.substring(0, 31 - suffix.length) + suffix;
+      }
+
+      usedNames.add(result);
+
+      return result;
+    };
+
+    // =========================================================
+    // FILTERED CONTRACTS
+    // =========================================================
+
+    const exportContracts = sortedContracts || [];
+
+    const contractFileNos = new Set(
+      exportContracts.map((contract) => contract.fileno)
+    );
+
+    const exportBills = (bills || []).filter((bill) =>
+      contractFileNos.has(bill.fileno)
+    );
+
+ // =========================================================
+// CREATE SHEET NAME FROM WORK NAME
+// =========================================================
+
+const usedSheetNames = new Set([
+  "Contracts",
+  "Bills",
+]);
+
+const contractSheetMap = new Map();
+
+exportContracts.forEach((contract) => {
+  const fileNo =
+    contract.fileno || contract._id;
+
+  const workName =
+    contract.nameofwork ||
+    contract.nameOfWork ||
+    contract.workname ||
+    fileNo ||
+    "Contract";
+
+  const sheetName = makeSheetName(
+    workName,
+    usedSheetNames
+  );
+
+  contractSheetMap.set(
+    fileNo,
+    sheetName
+  );
+});
+    // =========================================================
+    // 1. CONTRACTS SHEET
+    // =========================================================
+
+    const contractsWS =
+      workbook.addWorksheet("Contracts");
+
+    contractsWS.views = [
+      {
+        state: "frozen",
+        ySplit: 1,
+      },
+    ];
+
+    // Widths
+    contractsWS.columns = [
+      { width: 8 },   // Sl
+      { width: 18 },  // Railway
+      { width: 18 },  // Division
+      { width: 32 },  // Name of Work
+      { width: 38 },  // Train Name
+      { width: 25 },  // Contract No
+      { width: 15 },  // Date
+      { width: 14 },  // Duration
+      { width: 15 },  // Start
+      { width: 15 },  // End
+      { width: 15 },  // Extension
+      { width: 18 },  // Contract
+      { width: 14 },  // Work Complete
+      { width: 18 },  // Maximum
+      { width: 18 },  // Actual Penalty
+      { width: 14 },  // % Penalty
+      { width: 14 },  // EMD
+      { width: 18 },  // PG Amount
+      { width: 15 },  // ASD
+      { width: 15 },  // PG/ASD
+      { width: 16 },  // Status
+      { width: 14 },  // Owner
+      { width: 18 },  // Experience
+      { width: 15 },  // Bill Passed
+    ];
+
+    // Header
+    const contractHeaders = [
+      "Sl",
+      "Railway",
+      "Division",
+      "Name of Work",
+      "Train Name/Nos.",
+      "Contract No.",
+      "Date",
+      "Duration",
+      "Start",
+      "End",
+      "Extension",
+      "Contract Value",
+      "Work Complete",
+      "Maximum Penalty",
+      "Actual Penalty",
+      "% Penalty",
+      "EMD",
+      "PG Amount",
+      "ASD",
+      "PG/ASD",
+      "Status",
+      "Owner",
+      "Experience Cert.",
+      "Bill Passed",
+    ];
+
+    const headerRow =
+      contractsWS.addRow(contractHeaders);
+
+    headerRow.height = 25;
+
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: COLORS.yellow,
+        },
+      };
+
+      cell.font = {
+        bold: true,
+        color: {
+          argb: COLORS.blue,
+        },
+        size: 10,
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+
+      cell.border = border;
+    });
+
+    // =========================================================
+    // CONTRACT ROWS
+    // =========================================================
+
+    exportContracts.forEach((contract, index) => {
+      const contractBills = exportBills.filter(
+        (bill) => bill.fileno === contract.fileno
       );
-      const metrics = getContractBillingMetrics(c, contractBills);
 
-      return {
-        "File No": c.fileno || "N/A",
-        Railway: c.railway,
-        Division: c.division || "N/A",
-        "Name of Work": c.workname || "N/A",
-        "Train Name": c.trainname,
-        "Contract Number": c.contractNumber || "N/A",
-        Date: c.date,
-        "Start Date": formatDate(c.startdate),
-        "End Date": formatDate(c.enddate),
-        "Extended Date": c.extension ? formatDate(c.extension) : "N/A",
-        "Last Bill To Date": metrics.lastBillToDate ? formatDate(metrics.lastBillToDate) : "N/A",
-        "Contract Value (₹)": Number(c.contractvalue || 0),
-        "Billable To Date (₹)": Math.round(metrics.currentBillableValue),
-        "Billable %": `${metrics.billableToDatePercentage}%`,
-        "Total Penalty (₹)": totalPenalty,
-        Status: c.status || "N/A",
-        Manager: c.managername || "N/A",
-        Owner: c.owner || "N/A",
+      const metrics = getContractBillingMetrics(
+        contract,
+        contractBills
+      );
+
+      const railway =
+        contract.railway ||
+        contract.railwayname ||
+        contract.railwayName ||
+        "";
+
+      const division =
+        contract.division || "";
+
+      const workName =
+        contract.nameofwork ||
+        contract.nameOfWork ||
+        contract.workname ||
+        "";
+
+      const trainName =
+        contract.trainname ||
+        contract.trainName ||
+        contract.train ||
+        "";
+
+      const contractValue =
+        safeNumber(contract.contractvalue);
+
+      const extendedValue =
+        safeNumber(contract.extendedvalue);
+
+      const totalValue =
+        contractValue + extendedValue;
+
+      const actualPenalty =
+        safeNumber(metrics.actualPenalty) ||
+        safeNumber(contract.penalty);
+
+      const maximumPenalty =
+        totalValue * 0.10;
+
+      const penaltyPercentage =
+        maximumPenalty > 0
+          ? actualPenalty / maximumPenalty
+          : 0;
+
+      const row = contractsWS.addRow([
+        index + 1,
+        railway,
+        division,
+        workName,
+        trainName,
+        contract.fileno || "",
+        formatDate(contract.date || contract.contractdate),
+        contract.duration || "",
+        formatDate(contract.startdate),
+        formatDate(contract.enddate),
+        formatDate(contract.extension),
+        totalValue,
+        safeNumber(
+          metrics.billableToDatePercentage
+        ),
+        maximumPenalty,
+        actualPenalty,
+        penaltyPercentage,
+        safeNumber(contract.emd),
+        safeNumber(contract.pgamount),
+        safeNumber(contract.asd),
+        safeNumber(contract.pgasd),
+        contract.status || "",
+        contract.owner || "",
+        contract.experiencecertificate || "",
+        contract.billpassed || "",
+      ]);
+
+      row.height = 22;
+
+      row.eachCell((cell) => {
+        cell.border = border;
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+
+      // Yellow/orange style similar to your existing sheet
+      const status =
+        String(contract.status || "").toLowerCase();
+
+      if (status === "completed") {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: COLORS.yellow,
+            },
+          };
+        });
+
+        row.getCell(21).font = {
+          color: {
+            argb: COLORS.red,
+          },
+          bold: true,
+        };
+      }
+
+      // Number formats
+      row.getCell(12).numFmt = moneyFormat;
+      row.getCell(14).numFmt = moneyFormat;
+      row.getCell(15).numFmt = moneyFormat;
+
+      row.getCell(13).numFmt = "0";
+      row.getCell(16).numFmt = "0.00%";
+
+      // =====================================================
+      // NAME OF WORK -> CONTRACT SHEET
+      // =====================================================
+
+      const sheetName =
+        contractSheetMap.get(contract.fileno);
+
+      if (sheetName) {
+        row.getCell(4).value = {
+          text: workName,
+          hyperlink: `#'${sheetName}'!A1`,
+        };
+
+        row.getCell(4).font = {
+          color: {
+            argb: COLORS.blue,
+          },
+          underline: true,
+          bold: true,
+        };
+      }
+
+      // File No -> Contract sheet
+      if (sheetName) {
+        row.getCell(6).value = {
+          text: contract.fileno || "",
+          hyperlink: `#'${sheetName}'!A1`,
+        };
+
+        row.getCell(6).font = {
+          color: {
+            argb: COLORS.blue,
+          },
+          underline: true,
+        };
+      }
+    });
+
+    // =========================================================
+    // 2. ALL BILLS SHEET
+    // =========================================================
+
+    const billsWS =
+      workbook.addWorksheet("Bills");
+
+    billsWS.views = [
+      {
+        state: "frozen",
+        ySplit: 1,
+      },
+    ];
+
+    billsWS.columns = [
+      { width: 18 },
+      { width: 18 },
+      { width: 15 },
+      { width: 15 },
+      { width: 18 },
+      { width: 18 },
+      { width: 15 },
+      { width: 15 },
+      { width: 15 },
+      { width: 15 },
+    ];
+
+    const billHeaders = [
+      "File No.",
+      "Bill No.",
+      "Date",
+      "From",
+      "To",
+      "Amount",
+      "GST",
+      "Total",
+      "Collection",
+      "Penalty",
+    ];
+
+    const billHeaderRow =
+      billsWS.addRow(billHeaders);
+
+    billHeaderRow.height = 25;
+
+    billHeaderRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: COLORS.yellow,
+        },
+      };
+
+      cell.font = {
+        bold: true,
+        color: {
+          argb: COLORS.blue,
+        },
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+      };
+
+      cell.border = border;
+    });
+
+    exportBills.forEach((bill) => {
+      const row = billsWS.addRow([
+        bill.fileno || "",
+        bill.billno ||
+          bill.billNo ||
+          "",
+        formatDate(
+          bill.billdate ||
+          bill.date
+        ),
+        formatDate(bill.from),
+        formatDate(bill.to),
+        safeNumber(bill.amount),
+        safeNumber(bill.gst),
+        safeNumber(bill.totalamount),
+        safeNumber(bill.amountpssd),
+        safeNumber(bill.penalty),
+      ]);
+
+      row.eachCell((cell) => {
+        cell.border = border;
+        cell.alignment = {
+          vertical: "middle",
+        };
+      });
+
+      row.getCell(6).numFmt = moneyFormat;
+      row.getCell(7).numFmt = moneyFormat;
+      row.getCell(8).numFmt = moneyFormat;
+      row.getCell(9).numFmt = moneyFormat;
+      row.getCell(10).numFmt = moneyFormat;
+
+      const sheetName =
+        contractSheetMap.get(bill.fileno);
+
+      if (sheetName) {
+        row.getCell(1).value = {
+          text: bill.fileno || "",
+          hyperlink: `#'${sheetName}'!A1`,
+        };
+
+        row.getCell(1).font = {
+          color: {
+            argb: COLORS.blue,
+          },
+          underline: true,
+        };
+      }
+    });
+
+    // =========================================================
+    // 3. INDIVIDUAL CONTRACT SHEETS
+    // =========================================================
+
+    exportContracts.forEach((contract) => {
+      const fileNo =
+        contract.fileno ||
+        contract._id;
+
+      const sheetName =
+        contractSheetMap.get(fileNo);
+
+      const ws =
+        workbook.addWorksheet(sheetName);
+
+      // -------------------------------------------------------
+      // COLUMN WIDTHS
+      // -------------------------------------------------------
+
+      ws.columns = [
+        { width: 14 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+      ];
+
+      // -------------------------------------------------------
+      // TOP NAVIGATION
+      // -------------------------------------------------------
+
+      ws.getCell("A1").value = {
+        text: `File No. ${fileNo}`,
+        hyperlink: "#'Contracts'!A1",
+      };
+
+      ws.getCell("A1").font = {
+        bold: true,
+        color: {
+          argb: COLORS.blue,
+        },
+        size: 12,
+      };
+
+      ws.getCell("N1").value = {
+        text: "CONTRACTS",
+        hyperlink: "#'Contracts'!A1",
+      };
+
+      ws.getCell("N1").font = {
+        bold: true,
+        color: {
+          argb: "FFFF00",
+        },
+        underline: true,
+      };
+
+      ws.getCell("N1").fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "008000",
+        },
+      };
+
+      // -------------------------------------------------------
+      // COMPANY NAME
+      // -------------------------------------------------------
+
+      ws.mergeCells("E1:J1");
+
+      ws.getCell("E1").value =
+        "THARU & SONS";
+
+      ws.getCell("E1").font = {
+        bold: true,
+        size: 18,
+      };
+
+      ws.getCell("E1").alignment = {
+        horizontal: "center",
+      };
+
+      // -------------------------------------------------------
+      // RAILWAY / DIVISION
+      // -------------------------------------------------------
+
+      ws.mergeCells("E2:J2");
+
+      ws.getCell("E2").value =
+        `${contract.railway || ""}-${contract.division || ""}`;
+
+      ws.getCell("E2").font = {
+        bold: true,
+        color: {
+          argb: COLORS.red,
+        },
+        size: 16,
+      };
+
+      ws.getCell("E2").alignment = {
+        horizontal: "center",
+      };
+
+      // -------------------------------------------------------
+      // NAME OF WORK
+      // -------------------------------------------------------
+
+      ws.getCell("A4").value =
+        "Name of the Work :";
+
+      ws.getCell("A4").font = {
+        bold: true,
+      };
+
+      ws.mergeCells("B4:P4");
+
+      ws.getCell("B4").value =
+        contract.nameofwork ||
+        contract.nameOfWork ||
+        "";
+
+      ws.getCell("B4").font = {
+        bold: true,
+      };
+
+      // -------------------------------------------------------
+      // CONTRACT DETAILS
+      // -------------------------------------------------------
+
+      ws.getCell("A6").value =
+        "Contract Agreement No:";
+
+      ws.getCell("B6").value =
+        contract.contractno ||
+        contract.contractNo ||
+        fileNo;
+
+      ws.getCell("D6").value =
+        "Date";
+
+      ws.getCell("E6").value =
+        formatDate(
+          contract.date ||
+          contract.contractdate
+        );
+
+      ws.getCell("A7").value =
+        "LOA No:";
+
+      ws.getCell("B7").value =
+        contract.loa || "";
+
+      ws.getCell("A8").value =
+        "Period:";
+
+      ws.getCell("B8").value =
+        contract.period || "";
+
+      ws.getCell("C8").value =
+        "Months";
+
+      ws.getCell("A9").value =
+        "Date of Commencement:";
+
+      ws.getCell("B9").value =
+        formatDate(contract.startdate);
+
+      ws.getCell("A10").value =
+        "Date of Completion:";
+
+      ws.getCell("B10").value =
+        formatDate(
+          contract.extension ||
+          contract.enddate
+        );
+
+      ws.getCell("A11").value =
+        "Total Contract Value";
+
+      ws.getCell("B11").value =
+        safeNumber(contract.contractvalue) +
+        safeNumber(contract.extendedvalue);
+
+      ws.getCell("B11").numFmt =
+        moneyFormat;
+
+      // -------------------------------------------------------
+      // WORK EXECUTED
+      // -------------------------------------------------------
+
+      ws.getCell("F8").value =
+        "Work Executed (%)";
+
+      ws.getCell("G8").value =
+        safeNumber(
+          getContractBillingMetrics(
+            contract,
+            exportBills.filter(
+              (bill) =>
+                bill.fileno === fileNo
+            )
+          ).billableToDatePercentage
+        );
+
+      ws.getCell("G8").numFmt =
+        "0";
+
+      ws.getCell("F8").font = {
+        bold: true,
+      };
+
+      ws.getCell("F8").border = border;
+      ws.getCell("G8").border = border;
+
+      // -------------------------------------------------------
+      // MONTHLY BILL
+      // -------------------------------------------------------
+
+      ws.getCell("F11").value =
+        "Monthly Bill";
+
+      ws.getCell("G11").value =
+        safeNumber(
+          contract.monthlybill
+        );
+
+      ws.getCell("G11").numFmt =
+        moneyFormat;
+
+      ws.getCell("F11").font = {
+        bold: true,
+      };
+
+      ws.getCell("F11").border = border;
+      ws.getCell("G11").border = border;
+
+      // -------------------------------------------------------
+      // BANK GUARANTEE
+      // -------------------------------------------------------
+
+      ws.getCell("J6").value =
+        "Bank Guarantee";
+
+      ws.getCell("J6").font = {
+        bold: true,
+      };
+
+      ws.getCell("J7").value =
+        "EMD";
+
+      ws.getCell("K7").value =
+        contract.emd || "";
+
+      ws.getCell("J8").value =
+        "PG";
+
+      ws.getCell("K8").value =
+        contract.pgamount || "";
+
+      ws.getCell("J9").value =
+        "Validity:";
+
+      ws.getCell("K9").value =
+        contract.pgvalidity || "";
+
+      ws.getCell("J10").value =
+        "BG Details:";
+
+      ws.mergeCells("K10:P10");
+
+      ws.getCell("K10").value =
+        contract.bgdetails || "";
+
+      // -------------------------------------------------------
+      // PENALTY
+      // -------------------------------------------------------
+
+      ws.getCell("J12").value =
+        "Maximum Applicable Penalty";
+
+      ws.getCell("K12").value =
+        (
+          (
+            safeNumber(contract.contractvalue) +
+            safeNumber(contract.extendedvalue)
+          ) * 0.10
+        );
+
+      ws.getCell("K12").numFmt =
+        moneyFormat;
+
+      ws.getCell("J13").value =
+        "Penalty Imposed Till Date";
+
+      ws.getCell("K13").value =
+        safeNumber(contract.penalty);
+
+      ws.getCell("K13").numFmt =
+        moneyFormat;
+
+      ws.getCell("L13").value =
+        (
+          (
+            safeNumber(contract.contractvalue) +
+            safeNumber(contract.extendedvalue)
+          ) > 0
+            ? safeNumber(contract.penalty) /
+              (
+                (
+                  safeNumber(contract.contractvalue) +
+                  safeNumber(contract.extendedvalue)
+                ) * 0.10
+              )
+            : 0
+        );
+
+      ws.getCell("L13").numFmt =
+        "0.00%";
+
+      // Green penalty area
+      ["J12", "K12", "J13", "K13", "L13"]
+        .forEach((address) => {
+          ws.getCell(address).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: COLORS.green,
+            },
+          };
+
+          ws.getCell(address).border =
+            border;
+        });
+
+      // -------------------------------------------------------
+      // BILL TABLE
+      // -------------------------------------------------------
+
+      const billStartRow = 16;
+
+      const billHeaders = [
+        "Date",
+        "Bill No.",
+        "From",
+        "To",
+        "Amount",
+        "GST",
+        "Total",
+        "Cheque",
+        "Date",
+        "Amount",
+        "TDS",
+        "GST-TDS",
+        "Penalty",
+        "CC",
+        "Postal",
+        "Balance",
+      ];
+
+      const billHeaderRow =
+        ws.getRow(billStartRow);
+
+      billHeaders.forEach(
+        (header, index) => {
+          const cell =
+            billHeaderRow.getCell(
+              index + 1
+            );
+
+          cell.value = header;
+
+          cell.font = {
+            bold: true,
+          };
+
+          cell.alignment = {
+            horizontal: "center",
+            vertical: "middle",
+          };
+
+          cell.border = border;
+
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: COLORS.grey,
+            },
+          };
+        }
+      );
+
+      const contractBills =
+        exportBills.filter(
+          (bill) =>
+            bill.fileno === fileNo
+        );
+
+      contractBills.forEach(
+        (bill, index) => {
+          const row =
+            ws.getRow(
+              billStartRow + 1 + index
+            );
+
+          const values = [
+            formatDate(
+              bill.billdate ||
+              bill.date
+            ),
+
+            bill.billno ||
+              bill.billNo ||
+              "",
+
+            formatDate(bill.from),
+
+            formatDate(bill.to),
+
+            safeNumber(
+              bill.amount
+            ),
+
+            safeNumber(
+              bill.gst
+            ),
+
+            safeNumber(
+              bill.totalamount
+            ),
+
+            bill.cheque ||
+              bill.mode ||
+              "TFR",
+
+            formatDate(
+              bill.collectiondate
+            ),
+
+            safeNumber(
+              bill.amountpssd
+            ),
+
+            safeNumber(
+              bill.tds
+            ),
+
+            safeNumber(
+              bill.gsttds
+            ),
+
+            safeNumber(
+              bill.penalty
+            ),
+
+            safeNumber(
+              bill.cc
+            ),
+
+            safeNumber(
+              bill.postage
+            ),
+
+            safeNumber(
+              bill.balance
+            ),
+          ];
+
+          values.forEach(
+            (value, colIndex) => {
+              const cell =
+                row.getCell(
+                  colIndex + 1
+                );
+
+              cell.value = value;
+              cell.border = border;
+
+              cell.alignment = {
+                horizontal:
+                  colIndex >= 4
+                    ? "right"
+                    : "center",
+                vertical: "middle",
+              };
+
+              if (
+                colIndex >= 4
+              ) {
+                cell.numFmt =
+                  moneyFormat;
+              }
+            }
+          );
+
+          row.height = 20;
+        }
+      );
+
+      // -------------------------------------------------------
+      // BILLS LINK
+      // -------------------------------------------------------
+
+      ws.getCell("P1").value = {
+        text: "ALL BILLS",
+        hyperlink: "#'Bills'!A1",
+      };
+
+      ws.getCell("P1").font = {
+        bold: true,
+        color: {
+          argb: COLORS.blue,
+        },
+        underline: true,
+      };
+
+      // -------------------------------------------------------
+      // GENERAL FORMATTING
+      // -------------------------------------------------------
+
+      ws.eachRow((row) => {
+        row.eachCell((cell) => {
+          if (!cell.border) {
+            cell.border = border;
+          }
+
+          cell.alignment = {
+            ...cell.alignment,
+            vertical: "middle",
+          };
+        });
+      });
+
+      ws.views = [
+        {
+          state: "frozen",
+          ySplit: billStartRow,
+        },
+      ];
+
+      ws.pageSetup = {
+        orientation: "landscape",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
       };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Contracts");
-    XLSX.writeFile(workbook, "Contracts_Data.xlsx");
-    toast.success("Excel sheet downloaded successfully!");
-  };
+    // =========================================================
+    // DOWNLOAD
+    // =========================================================
+
+    const buffer =
+      await workbook.xlsx.writeBuffer();
+
+    const blob = new Blob(
+      [buffer],
+      {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }
+    );
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      `Tharu_Sons_Contracts_Bills_${new Date()
+        .toISOString()
+        .split("T")[0]}.xlsx`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+
+    toast.success(
+      "Excel exported successfully"
+    );
+
+  } catch (error) {
+    console.error(
+      "Excel export error:",
+      error
+    );
+
+    toast.error(
+      "Failed to export Excel"
+    );
+  }
+};
 
   if (loading) {
     return (
@@ -871,7 +1949,7 @@ const Contracts = () => {
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-slate-400">Billable To-Date:</span>
+                                      <span className="text-slate-400">Billed + Unbilled:</span>
                                       <span className="font-semibold text-slate-800">
                                         ₹{Math.round(metrics.currentBillableValue).toLocaleString("en-IN")}
                                       </span>
