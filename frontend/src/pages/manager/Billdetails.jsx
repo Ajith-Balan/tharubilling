@@ -15,6 +15,8 @@ const Billdetails = () => {
   const [editId, setEditId] = useState(null);
   const [editedData, setEditedData] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(true);
+  
 
   const { fileno } = useParams();
 
@@ -67,6 +69,8 @@ const Billdetails = () => {
 
   const fetchBills = async () => {
     try {
+            setLoading(true);
+
       const res = await axios.get(
         `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/getcontractbills/${fileno}`
       );
@@ -76,6 +80,9 @@ const Billdetails = () => {
       setBills(sortedBills);
     } catch (err) {
       console.error("Error fetching bills:", err);
+    } finally {
+            setLoading(false);
+
     }
   };
 
@@ -227,6 +234,21 @@ const Billdetails = () => {
   const calculateTotal = (key) => {
     return filteredBills.reduce((sum, item) => sum + (Number(getBillValue(item, key)) || 0), 0);
   };
+
+    if (loading) {
+    return (
+      <Layout>
+        <div className="p-6 animate-pulse">
+          <div className="h-10 bg-gray-200 rounded w-64 mb-6"></div>
+          <div className="bg-white rounded-xl shadow p-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-14 bg-gray-200 rounded mb-3"></div>
+            ))}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Bill Details Ledger - Manager">

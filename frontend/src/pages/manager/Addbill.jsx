@@ -4,13 +4,14 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/Auth";
 import * as XLSX from "xlsx";
-import { useParams } from "react-router-dom";
+import { useParams,useNavigate } from "react-router-dom";
 const Addbill = () => {
   const {fileno} = useParams()
   const [auth] = useAuth();
+  const navigate = useNavigate();
 
   const initialState = {
-   fileno: auth?.user?.fileno || "",
+   fileno: auth?.user?.fileno || fileno || "",
    status: "PENDING",
     customFields: {},
   };
@@ -86,7 +87,17 @@ const Addbill = () => {
       );
       if (res.status === 201) {
         toast.success("Bill added successfully");
-        setFormData(initialState);
+
+setFormData(initialState);
+
+setTimeout(() => {
+  navigate(
+    `/dashboard/manager/bills/${
+      formData.fileno || auth?.user?.fileno || fileno
+    }`,
+    { replace: true }
+  );
+}, 2000);
       } else {
         toast.error("Failed to add bill");
       }

@@ -1536,6 +1536,18 @@ exportContracts.forEach((contract) => {
               <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Currently running</p>
             </div>
 
+
+           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
+              <div className="absolute -right-5 -top-5 opacity-20">
+                <FaClipboardCheck size={80} />
+              </div>
+              <p className="text-xs sm:text-sm font-medium opacity-90">Extended</p>
+              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
+                {sortedContracts.filter((c) => c.status === "extended").length}
+              </h2>
+              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Extended</p>
+            </div>
+
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
               <div className="absolute -right-5 -top-5 opacity-20">
                 <FaClipboardCheck size={80} />
@@ -1699,6 +1711,7 @@ exportContracts.forEach((contract) => {
               >
                 <option value="All">All Statuses</option>
                 <option value="Active">Active</option>
+                <option value="extended">Extended</option>
                 <option value="Completed">Completed</option>
                 <option value="Closed">Closed</option>
               </select>
@@ -1793,7 +1806,7 @@ exportContracts.forEach((contract) => {
                       <th className="px-4 py-3 text-left font-semibold border-r">Manager</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Number</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Contract Value</th>
-                      <th className="px-4 py-3 text-left font-semibold border-r">Penalty</th>
+                      {/* <th className="px-4 py-3 text-left font-semibold border-r">Penalty</th> */}
                       <th className="px-4 py-3 text-left font-semibold border-r">Started On</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Validity / Progress</th>
                       <th className="px-4 py-3 text-left font-semibold border-r">Extension</th>
@@ -1835,7 +1848,7 @@ exportContracts.forEach((contract) => {
                           ₹{Number(contract.contractvalue || 0).toLocaleString("en-IN")}
                         
                         </td>
-                        <td className="px-2 py-2 border-r">
+                        {/* <td className="px-2 py-2 border-r">
                           {(() => {
                             const contractValue = Number(contract.contractvalue || 0);
                             const billsForContract = matchedBills.filter((b) => b.fileno === contract.fileno);
@@ -1859,7 +1872,7 @@ exportContracts.forEach((contract) => {
                               </div>
                             );
                           })()}
-                        </td>
+                        </td> */}
                         <td className="px-4 py-3 border-r whitespace-nowrap overflow-hidden text-ellipsis">
                           {formatDate(contract.startdate)}
                         </td>
