@@ -59,6 +59,22 @@ const getDateCompletionPercentage = (contract) => {
   return Math.max(0, Math.round((elapsedDays / activeDurationDays) * 100));
 };
 
+
+const getContractMonths = (startDate, endDate) => {
+  if (!startDate || !endDate) return "";
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (isNaN(start) || isNaN(end) || end < start) return "";
+
+  return (
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth())
+  );
+};
+
+
 // 2. Billing Metrics (Finds billto, calculates daily rate, and Billable To Date)
 const getContractBillingMetrics = (contract, contractBills = []) => {
   if (!contract || !contract.startdate || !contract.enddate) {
@@ -466,9 +482,7 @@ exportContracts.forEach((contract) => {
     contract.fileno || contract._id;
 
   const workName =
-    contract.nameofwork ||
-    contract.nameOfWork ||
-    contract.workname ||
+ contract.workname ||
     fileNo ||
     "Contract";
 
@@ -514,14 +528,10 @@ exportContracts.forEach((contract) => {
       { width: 18 },  // Maximum
       { width: 18 },  // Actual Penalty
       { width: 14 },  // % Penalty
-      { width: 14 },  // EMD
-      { width: 18 },  // PG Amount
-      { width: 15 },  // ASD
-      { width: 15 },  // PG/ASD
+   
       { width: 16 },  // Status
       { width: 14 },  // Owner
-      { width: 18 },  // Experience
-      { width: 15 },  // Bill Passed
+
     ];
 
     // Header
@@ -542,14 +552,10 @@ exportContracts.forEach((contract) => {
       "Maximum Penalty",
       "Actual Penalty",
       "% Penalty",
-      "EMD",
-      "PG Amount",
-      "ASD",
-      "PG/ASD",
+    
       "Status",
       "Owner",
-      "Experience Cert.",
-      "Bill Passed",
+     
     ];
 
     const headerRow =
@@ -598,24 +604,18 @@ exportContracts.forEach((contract) => {
       );
 
       const railway =
-        contract.railway ||
-        contract.railwayname ||
-        contract.railwayName ||
-        "";
+        contract.railway || "";
 
       const division =
         contract.division || "";
 
       const workName =
-        contract.nameofwork ||
-        contract.nameOfWork ||
-        contract.workname ||
+   contract.workname ||
         "";
 
       const trainName =
         contract.trainname ||
-        contract.trainName ||
-        contract.train ||
+    
         "";
 
       const contractValue =
@@ -640,15 +640,15 @@ exportContracts.forEach((contract) => {
           : 0;
 
       const row = contractsWS.addRow([
-        index + 1,
+        contract.fileno,
         railway,
         division,
         workName,
         trainName,
-        contract.fileno || "",
-        formatDate(contract.date || contract.contractdate),
-        contract.duration || "",
-        formatDate(contract.startdate),
+        contract.contractNumber || "",
+        formatDate(contract.date || ""),
+ getContractMonths(contract.startdate, contract.enddate) + " Months",
+         formatDate(contract.startdate),
         formatDate(contract.enddate),
         formatDate(contract.extension),
         totalValue,
@@ -658,14 +658,10 @@ exportContracts.forEach((contract) => {
         maximumPenalty,
         actualPenalty,
         penaltyPercentage,
-        safeNumber(contract.emd),
-        safeNumber(contract.pgamount),
-        safeNumber(contract.asd),
-        safeNumber(contract.pgasd),
+   
         contract.status || "",
         contract.owner || "",
-        contract.experiencecertificate || "",
-        contract.billpassed || "",
+   
       ]);
 
       row.height = 22;
@@ -734,7 +730,7 @@ exportContracts.forEach((contract) => {
       // File No -> Contract sheet
       if (sheetName) {
         row.getCell(6).value = {
-          text: contract.fileno || "",
+          text: contract.contractNumber || "",
           hyperlink: `#'${sheetName}'!A1`,
         };
 
@@ -819,16 +815,16 @@ exportContracts.forEach((contract) => {
     exportBills.forEach((bill) => {
       const row = billsWS.addRow([
         bill.fileno || "",
-        bill.billno ||
-          bill.billNo ||
-          "",
+      
+        bill.billno || "",
+        
         formatDate(
-          bill.billdate ||
-          bill.date
+          bill.einvoicedate 
+         
         ),
-        formatDate(bill.from),
-        formatDate(bill.to),
-        safeNumber(bill.amount),
+        formatDate(bill.billfrom),
+        formatDate(bill.billto),
+        safeNumber(bill.netamount),
         safeNumber(bill.gst),
         safeNumber(bill.totalamount),
         safeNumber(bill.amountpssd),
@@ -995,8 +991,8 @@ exportContracts.forEach((contract) => {
       ws.mergeCells("B4:P4");
 
       ws.getCell("B4").value =
-        contract.nameofwork ||
-        contract.nameOfWork ||
+        contract.nameofthework ||
+       
         "";
 
       ws.getCell("B4").font = {
@@ -1011,8 +1007,8 @@ exportContracts.forEach((contract) => {
         "Contract Agreement No:";
 
       ws.getCell("B6").value =
-        contract.contractno ||
-        contract.contractNo ||
+       
+        contract.contractNumber ||
         fileNo;
 
       ws.getCell("D6").value =
@@ -1021,7 +1017,7 @@ exportContracts.forEach((contract) => {
       ws.getCell("E6").value =
         formatDate(
           contract.date ||
-          contract.contractdate
+         ""
         );
 
       ws.getCell("A7").value =
@@ -1034,10 +1030,10 @@ exportContracts.forEach((contract) => {
         "Period:";
 
       ws.getCell("B8").value =
-        contract.period || "";
+      getContractMonths(contract.startdate, contract.enddate) + " Months";
 
-      ws.getCell("C8").value =
-        "Months";
+      // ws.getCell("C8").value =
+      //   "Months";
 
       ws.getCell("A9").value =
         "Date of Commencement:";
@@ -1101,7 +1097,7 @@ exportContracts.forEach((contract) => {
 
       ws.getCell("G11").value =
         safeNumber(
-          contract.monthlybill
+          contract.contractvalue / Math.max(1, getContractMonths(contract.startdate, contract.enddate))
         );
 
       ws.getCell("G11").numFmt =
@@ -1118,38 +1114,38 @@ exportContracts.forEach((contract) => {
       // BANK GUARANTEE
       // -------------------------------------------------------
 
-      ws.getCell("J6").value =
-        "Bank Guarantee";
+      // ws.getCell("J6").value =
+      //   "Bank Guarantee";
 
-      ws.getCell("J6").font = {
-        bold: true,
-      };
+      // ws.getCell("J6").font = {
+      //   bold: true,
+      // };
 
-      ws.getCell("J7").value =
-        "EMD";
+      // ws.getCell("J7").value =
+      //   "EMD";
 
-      ws.getCell("K7").value =
-        contract.emd || "";
+      // ws.getCell("K7").value =
+      //   contract.emd || "";
 
-      ws.getCell("J8").value =
-        "PG";
+      // ws.getCell("J8").value =
+      //   "PG";
 
-      ws.getCell("K8").value =
-        contract.pgamount || "";
+      // ws.getCell("K8").value =
+      //   contract.pgamount || "";
 
-      ws.getCell("J9").value =
-        "Validity:";
+      // ws.getCell("J9").value =
+      //   "Validity:";
 
-      ws.getCell("K9").value =
-        contract.pgvalidity || "";
+      // ws.getCell("K9").value =
+      //   contract.pgvalidity || "";
 
-      ws.getCell("J10").value =
-        "BG Details:";
+      // ws.getCell("J10").value =
+      //   "BG Details:";
 
-      ws.mergeCells("K10:P10");
+      // ws.mergeCells("K10:P10");
 
-      ws.getCell("K10").value =
-        contract.bgdetails || "";
+      // ws.getCell("K10").value =
+      //   contract.bgdetails || "";
 
       // -------------------------------------------------------
       // PENALTY
@@ -1285,20 +1281,20 @@ exportContracts.forEach((contract) => {
 
           const values = [
             formatDate(
-              bill.billdate ||
-              bill.date
+              bill.einvoicedate ||
+              ""
             ),
 
             bill.billno ||
-              bill.billNo ||
+             
               "",
 
-            formatDate(bill.from),
+            formatDate(bill.billfrom),
 
-            formatDate(bill.to),
+            formatDate(bill.billto),
 
             safeNumber(
-              bill.amount
+              bill.netamount
             ),
 
             safeNumber(
@@ -1310,11 +1306,11 @@ exportContracts.forEach((contract) => {
             ),
 
             bill.cheque ||
-              bill.mode ||
+              
               "TFR",
 
             formatDate(
-              bill.collectiondate
+              bill.billpassdt
             ),
 
             safeNumber(
