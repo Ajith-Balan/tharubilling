@@ -15,15 +15,15 @@ const Contact = () => {
           <div className="flex items-center mb-4">
             <FaMapMarkerAlt className="text-red-600 h-6 w-6 mr-2" />
             <p>
-              [CJ ATTIRE] <br />
-              [Kerala, Palakkad <br />
-              Pin 678510, Nenmmara]
+              [ Tharu and Sons] <br />
+              [Kerala, Ernakulam <br />
+               Pin: 682030 ]
             </p>
           </div>
 
           <div className="flex items-center mb-4">
             <FaEnvelope className="text-red-600 h-6 w-6 mr-2" />
-            <p>Email: <a href="mailto:Cjattire2001@gmail.com" className="text-red-600 hover:underline">cjattire2001@gmail.com</a></p>
+            <p>Email: <a href="mailto:info@tharuandsons.in" className="text-red-600 hover:underline">info@tharuandsons.in</a></p>
           </div>
 
           <div className="flex items-center">

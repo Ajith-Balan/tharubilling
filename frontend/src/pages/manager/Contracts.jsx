@@ -583,7 +583,7 @@ exportContracts.forEach((contract) => {
       cell.alignment = {
         horizontal: "center",
         vertical: "middle",
-        wrapText: true,
+        wrapText: false,
       };
 
       cell.border = border;
@@ -670,7 +670,7 @@ exportContracts.forEach((contract) => {
         cell.border = border;
         cell.alignment = {
           vertical: "middle",
-          wrapText: true,
+          wrapText: false,
         };
       });
 
@@ -728,19 +728,19 @@ exportContracts.forEach((contract) => {
       }
 
       // File No -> Contract sheet
-      if (sheetName) {
-        row.getCell(6).value = {
-          text: contract.contractNumber || "",
-          hyperlink: `#'${sheetName}'!A1`,
-        };
+      // if (sheetName) {
+      //   row.getCell(6).value = {
+      //     text: contract.contractNumber || "",
+      //     hyperlink: `#'${sheetName}'!A1`,
+      //   };
 
-        row.getCell(6).font = {
-          color: {
-            argb: COLORS.blue,
-          },
-          underline: true,
-        };
-      }
+      //   row.getCell(6).font = {
+      //     color: {
+      //       argb: COLORS.blue,
+      //     },
+      //     underline: true,
+      //   };
+      // }
     });
 
     // =========================================================
@@ -817,7 +817,7 @@ exportContracts.forEach((contract) => {
         bill.fileno || "",
       
         bill.billno || "",
-        
+
         formatDate(
           bill.einvoicedate 
          
