@@ -99,12 +99,18 @@ const getContractBillingMetrics = (contract, contractBills = []) => {
   const isExpired = effectiveEndDay ? todayDay >= effectiveEndDay : false;
 
   const totalContractValue =
-    Number(contract.contractvalue || 0);
+    Number(contract.contractvalue || 0); 
+
 
   const actualBilledAmount = contractBills.reduce(
     (sum, bill) => sum + (Number(bill.totalamount) || 0),
     0
   );
+  
+const einvoicebill = contractBills.reduce(
+  (sum, bill) => sum + (Number(bill.amountpssd ?? bill.totalamount) || 0),
+  0
+);
 
   // Extract latest bill date prioritizing `billto`
   let lastBillToDate = null;
@@ -1498,7 +1504,7 @@ exportContracts.forEach((contract) => {
           {/* Header */}
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h1 className="text-2xl font-bold text-gray-800">
-              Contract Dashboard
+              Contract Details
             </h1>
 
             <button
@@ -1511,95 +1517,140 @@ exportContracts.forEach((contract) => {
           </div>
 
           {/* Cards (Reflect Filtered/Sorted Data) */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 mb-8">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
-              <div className="absolute -right-5 -top-5 opacity-20">
-                <FaFolderOpen size={80} />
-              </div>
-              <p className="text-xs sm:text-sm font-medium opacity-90">Total Contracts</p>
-              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">{sortedContracts.length}</h2>
-              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Filtered results</p>
-            </div>
+        <div className="space-y-4 text-slate-800">
+  {/* Status Filter Buttons (Clickable Actions) */}
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+    {/* Total Contracts Filter */}
+    <button
+      onClick={() => setStatusFilter("All")}
+      className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 transition text-left cursor-pointer active:scale-95"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <FaFolderOpen className="text-violet-600 text-sm sm:text-base shrink-0" />
+        <span className="text-xs font-semibold text-violet-900 truncate">All Contracts</span>
+      </div>
+      <span className="text-sm sm:text-base font-bold text-violet-700 ml-1">
+        {sortedContracts.length}
+      </span>
+    </button>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
-              <div className="absolute -right-5 -top-5 opacity-20">
-                <FaCheckCircle size={80} />
-              </div>
-              <p className="text-xs sm:text-sm font-medium opacity-90">Active</p>
-              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
-                {sortedContracts.filter((c) => c.status === "Active").length}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Currently running</p>
-            </div>
+    {/* Active Filter */}
+    <button
+      onClick={() => setStatusFilter("Active")}
+      className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition text-left cursor-pointer active:scale-95"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <FaCheckCircle className="text-emerald-600 text-sm sm:text-base shrink-0" />
+        <span className="text-xs font-semibold text-emerald-900 truncate">Active Contracts</span>
+      </div>
+      <span className="text-sm sm:text-base font-bold text-emerald-700 ml-1">
+        {sortedContracts.filter((c) => c.status === "Active").length}
+      </span>
+    </button>
 
+    {/* Extended Filter */}
+    <button
+      onClick={() => setStatusFilter("Extended")}
+      className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 transition text-left cursor-pointer active:scale-95"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <FaClipboardCheck className="text-blue-600 text-sm sm:text-base shrink-0" />
+        <span className="text-xs font-semibold text-blue-900 truncate">Extended</span>
+      </div>
+      <span className="text-sm sm:text-base font-bold text-blue-700 ml-1">
+        {sortedContracts.filter((c) => c.status === "extended").length}
+      </span>
+    </button>
 
-           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
-              <div className="absolute -right-5 -top-5 opacity-20">
-                <FaClipboardCheck size={80} />
-              </div>
-              <p className="text-xs sm:text-sm font-medium opacity-90">Extended</p>
-              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
-                {sortedContracts.filter((c) => c.status === "extended").length}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Extended</p>
-            </div>
+    {/* Completed Filter */}
+    <button
+      onClick={() => setStatusFilter("Completed")}
+      className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition text-left cursor-pointer active:scale-95"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <FaClipboardCheck className="text-cyan-600 text-sm sm:text-base shrink-0" />
+        <span className="text-xs font-semibold text-cyan-900 truncate">Completed</span>
+      </div>
+      <span className="text-sm sm:text-base font-bold text-cyan-700 ml-1">
+        {sortedContracts.filter((c) => c.status === "Completed").length}
+      </span>
+    </button>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
-              <div className="absolute -right-5 -top-5 opacity-20">
-                <FaClipboardCheck size={80} />
-              </div>
-              <p className="text-xs sm:text-sm font-medium opacity-90">Completed</p>
-              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
-                {sortedContracts.filter((c) => c.status === "Completed").length}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Finished</p>
-            </div>
+    {/* Closed Filter */}
+    <button
+      onClick={() => setStatusFilter("Closed")}
+      className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 transition text-left cursor-pointer active:scale-95 col-span-2 sm:col-span-1"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <FaTimesCircle className="text-rose-600 text-sm sm:text-base shrink-0" />
+        <span className="text-xs font-semibold text-rose-900 truncate">Closed</span>
+      </div>
+      <span className="text-sm sm:text-base font-bold text-rose-700 ml-1">
+        {sortedContracts.filter((c) => c.status === "Closed").length}
+      </span>
+    </button>
+  </div>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 p-4 sm:p-5 text-white shadow-lg hover:scale-105 transition duration-300">
-              <div className="absolute -right-5 -top-5 opacity-20">
-                <FaTimesCircle size={80} />
-              </div>
-              <p className="text-xs sm:text-sm font-medium opacity-90">Closed</p>
-              <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2">
-                {sortedContracts.filter((c) => c.status === "Closed").length}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 sm:mt-3 opacity-80">Inactive</p>
-            </div>
+  {/* Financial Metrics Viewable Content */}
+  <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 sm:gap-3">
+    {/* Total Billed */}
+    <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-slate-200 border-l-4 border-l-blue-500 shadow-sm">
+      <p className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">
+        Total Billed
+      </p>
+      <h2 className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">
+        ₹{Math.round(aggregateMetrics.totalBilled).toLocaleString("en-IN")}
+      </h2>
+      <p className="text-[10px] text-slate-400 mt-1">Actual Billed</p>
+    </div>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-5 text-white shadow-lg">
-              <p className="text-xs sm:text-sm font-medium opacity-90">Total Billed</p>
-              <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
-                ₹{Math.round(aggregateMetrics.totalBilled).toLocaleString("en-IN")}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 opacity-80">Actual Billed Amount</p>
-            </div>
+       {/* Unbilled Amount */}
+    <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-slate-200 border-l-4 border-l-teal-500 shadow-sm">
+      <p className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">
+        Unbilled Amount
+      </p>
+      <h2 className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">
+        ₹{Math.round(aggregateMetrics.totalBillableToDate - aggregateMetrics.totalBilled).toLocaleString("en-IN")}
+      </h2>
+      <p className="text-[10px] text-slate-400 mt-1">Till Now</p>
+    </div>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 p-4 sm:p-5 text-white shadow-lg">
-              <p className="text-xs sm:text-sm font-medium opacity-90">Billable To-Date</p>
-              <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
-                ₹{Math.round(aggregateMetrics.totalBillableToDate).toLocaleString("en-IN")}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 opacity-80">
-                Billed + Projected to Today
-              </p>
-            </div>
+     {/* Unbilled Amount */}
+    {/* <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-slate-200 border-l-4 border-l-teal-500 shadow-sm">
+      <p className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">
+        Unbilled Amount
+      </p>
+      <h2 className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">
+        ₹{Math.round(aggregateMetrics.totalBillableToDate - aggregateMetrics.totalBilled).toLocaleString("en-IN")}
+      </h2>
+      <p className="text-[10px] text-slate-400 mt-1">Till Now</p>
+    </div> */}
+    
+    {/* Billable To-Date */}
+    <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
+      <p className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">
+        Current Total Billed
+      </p>
+      <h2 className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">
+        ₹{Math.round(aggregateMetrics.totalBillableToDate).toLocaleString("en-IN")}
+      </h2>
+      <p className="text-[10px] text-slate-400 mt-1">Billed + Unbilled</p>
+    </div>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 sm:p-5 text-white shadow-lg">
-              <p className="text-xs sm:text-sm font-medium opacity-90">Balance To Be Billed</p>
-              <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
-                ₹{Math.round(aggregateMetrics.totalBalanceToBill).toLocaleString("en-IN")}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 opacity-80">Remaining Contract Value</p>
-            </div>
+    {/* Balance To Be Billed */}
+    <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
+      <p className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide truncate">
+        Balance To Bill
+      </p>
+      <h2 className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">
+        ₹{Math.round(aggregateMetrics.totalBalanceToBill).toLocaleString("en-IN")}
+      </h2>
+      <p className="text-[10px] text-slate-400 mt-1">Remaining Value</p>
+    </div>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 sm:p-5 text-white shadow-lg">
-              <p className="text-xs sm:text-sm font-medium opacity-90">Unbilled Amount</p>
-              <h2 className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">
-                ₹{Math.round(aggregateMetrics.totalBillableToDate - aggregateMetrics.totalBilled).toLocaleString("en-IN")}
-              </h2>
-              <p className="text-[10px] sm:text-xs mt-2 opacity-80">Till Now</p>
-            </div>
-          </div>
+ 
+  </div>
+</div>
 
           {/* Notifications */}
           <div className="flex justify-end mb-4">

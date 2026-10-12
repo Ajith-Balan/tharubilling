@@ -32,6 +32,7 @@ import Expenses from './pages/manager/Expenses';
 import Subcontract from './pages/manager/Subcontract';
 import Bganalysis from './pages/manager/Bganalysis';
 import Editbill from './pages/manager/Editbill';
+// import Payslip from './pages/payslip';
 function App() {
   return (
     <>
@@ -90,6 +91,7 @@ function App() {
 
           {/* <Route path='/addsupervisors' element={<Addsupervisor />} /> */}
 
+          {/* <Route path='/payslip' element={<Payslip />} /> */}
 
           <Route path='/about' element={<About />} />
           <Route path='/contact' element={<Contact />} />

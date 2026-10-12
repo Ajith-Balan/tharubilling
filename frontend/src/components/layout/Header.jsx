@@ -18,7 +18,7 @@ const Header = () => {
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden md:block w-full bg-white shadow-md left-0 z-50">
+      <nav className=" hidden md:block w-full bg-white shadow-md left-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-3">
             {/* Logo */}
@@ -44,15 +44,7 @@ const Header = () => {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-6">
-              {["Home", "About" ].map((item) => (
-                <Link
-                  key={item}
-                  to={`/${item.toLowerCase()}`}
-                  className="text-gray-800 hover:text-teal-400 transition text-sm font-medium"
-                >
-                  {item}
-                </Link>
-              ))}
+          
 
               {!auth.user ? (
                 <>
