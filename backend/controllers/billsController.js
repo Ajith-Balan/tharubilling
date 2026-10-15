@@ -319,7 +319,7 @@ const formatCurrency = (amount) => {
 
         const mailOptions = {
           from: { name: 'Tharu & Sons', address: process.env.EMAIL_USER },
-          to: "info@tharuandsons.in",
+          to: "ayalurajith@gmail.com",
           subject: `E-Invoice Notification - Bill No: ${bill.billno}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">

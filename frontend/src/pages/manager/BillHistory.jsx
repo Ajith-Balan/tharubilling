@@ -347,20 +347,40 @@ const filteredAndSortedBills = useMemo(() => {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      await axios.put(
-        `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/update-bill/${editingBill}`,
-        editData
-      );
+ 
+const handleSave = async () => {
+  try {
+    const rawAmount = String(editData.amountpssd ?? "").trim();
+    const amount = Number(rawAmount.replace(/,/g, ""));
 
-      toast.success("Bill updated");
-      setEditingBill(null);
-      loadData();
-    } catch (err) {
-      toast.error("Update failed");
-    }
-  };
+    const hasPassedAmount =
+      rawAmount !== "" &&
+      Number.isFinite(amount) &&
+      amount > 0;
+
+    const payload = {
+      ...editData,
+      amountpssd: rawAmount === "" ? "" : amount,
+      status: hasPassedAmount ? "PASSED" : "PENDING",
+    };
+
+    await axios.put(
+      `${import.meta.env.VITE_APP_BACKEND}/api/v1/bills/update-bill/${editingBill}`,
+      payload
+    );
+
+    toast.success("Bill updated successfully");
+    setEditingBill(null);
+    setEditData({});
+    await loadData();
+  } catch (err) {
+    console.error("Bill update failed:", err.response?.data || err);
+    toast.error(
+      err.response?.data?.message || "Update failed"
+    );
+  }
+};
+
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this bill?")) return;
@@ -424,26 +444,46 @@ const getPendingBillStatus = (bills, statusFilter) => {
 
   if (filteredBills.length === 0) return "No Matching Bills";
 
-  // 2. Sort the target bills by billto date descending
-  const sortedBills = filteredBills.sort(
-    (a, b) => new Date(b.billto || 0) - new Date(a.billto || 0)
-  );
+// Get only passed bills (amountpssd has data)
+const passedBills = filteredBills.filter(
+  (bill) =>
+    bill.amountpssd !== null &&
+    bill.amountpssd !== undefined &&
+    bill.amountpssd !== "" &&
+    bill.amountpssd !== 0 &&
+   bill.amountpssd !== "0" 
 
-  const lastBill = sortedBills[0];
-  const dateStr = lastBill?.billto || 0;
-  if (!dateStr) return "No Date Available";
+    
+);
 
-  const lastBillDate = new Date(dateStr);
-  const today = new Date();
+// Sort passed bills by billto date descending
+const sortedBills = [...passedBills].sort(
+  (a, b) => new Date(b.billto || 0) - new Date(a.billto || 0)
+);
+const sortedbll = [...filteredBills].sort(
+  (a, b) => new Date(b.billto || 0) - new Date(a.billto || 0)
+);
+
+
+
+// Latest passed bill
+const lastBill = sortedBills[0];
+const lasttbill = sortedbll[0];
+
+if (!lastBill?.billto) return "No Date Available";
+
+const lastBillDate = new Date(lastBill.billto);
+const lastBillDte = new Date(lasttbill.billto);
+const today = new Date();
 
   const lastMonthName = lastBillDate.toLocaleString("en-US", {
     month: "short",
     year: "numeric",
   });
 
-  const yearDiff = today.getFullYear() - lastBillDate.getFullYear();
-  const monthDiff = today.getMonth() - lastBillDate.getMonth();
-  const pendingMonths = yearDiff * 12 + monthDiff;
+  const yearDiff = today.getFullYear() - lastBillDte.getFullYear();
+  const monthDiff = today.getMonth() - lastBillDte.getMonth();
+  const pendingMonths = yearDiff * 12 + monthDiff - 1;
 
   if (pendingMonths <= 0) {
     return `Last Passed: ${lastMonthName} • Up to date`;
@@ -914,12 +954,24 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                     </td>
                                     <td className="px-2 py-2 border-r border-slate-200 text-right text-emerald-700 font-bold bg-emerald-50/20">
                                       {isEditing ? (
-                                        <input 
-                                          type="number" 
-                                          className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
-                                          value={editData.amountpssd || ""}
-                                          onChange={(e) => setEditData({ ...editData, amountpssd: e.target.value })}
-                                        />
+                                        
+<input
+  type="number"
+  className="border border-slate-300 rounded px-1 py-0.5 text-[11px] w-20 text-right"
+  value={editData.amountpssd ?? ""}
+  onChange={(e) => {
+    const amount = e.target.value;
+    const hasPassedAmount =
+      amount.trim() !== "" && Number(amount) > 0;
+
+    setEditData((prev) => ({
+      ...prev,
+      amountpssd: amount,
+      status: hasPassedAmount ? "PASSED" : "PENDING",
+    }));
+  }}
+/>
+
                                       ) : formatCurrency(bill.amountpssd || 0)}
                                     </td>
                                     <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-500">

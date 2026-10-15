@@ -436,7 +436,7 @@ useEffect(() => {
                     <h3 className="font-bold text-white group-hover:text-blue-300 transition text-base truncate">Site Manager Portal</h3>
                     <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition shrink-0" />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">Linen inventory, OBHS logs, site staff shift scheduling & coach batch tracking</p>
+                  {/* <p className="text-xs text-slate-400 mt-1 line-clamp-2">Linen inventory, OBHS logs, site staff shift scheduling & coach batch tracking</p> */}
                 </div>
               </div>
             </a>
@@ -456,7 +456,7 @@ useEffect(() => {
                     <h3 className="font-bold text-white group-hover:text-red-300 transition text-base truncate">Admin Panel</h3>
                     <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-red-400 group-hover:translate-x-1 transition shrink-0" />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">Division executive control, contract compliance, laundry telemetry & SLA analytics</p>
+                  {/* <p className="text-xs text-slate-400 mt-1 line-clamp-2">Division executive control, contract compliance, laundry telemetry & SLA analytics</p> */}
                 </div>
               </div>
             </a>
