@@ -638,8 +638,33 @@ const Billdetails = () => {
       (Number(bill.gsttds) || 0) +
       (Number(bill.penalty) || 0)+
       (Number(bill.other_deductions) || 0)+
-      (Number(bill.cc) || 0)
-      
+      (Number(bill.cc) || 0) +
+      (Number(bill.Linen_Loss) || 0) +
+      (Number(bill.overpay) || 0) +
+      (Number(bill.electricity) || 0) +
+      (Number(bill.cess) || 0) +
+      (Number(bill.building_cess) || 0) +
+      (Number(bill.labour_cess) || 0) +
+      (Number(bill.sd) || 0) +
+      (Number(bill.deposit) || 0) +
+      (Number(bill.postage) || 0) +
+      (Number(bill.postal_charge) || 0) +
+      (Number(bill.security) || 0) +
+      (Number(bill.postage_bill_copy) || 0) +
+      (Number(bill.welfare_cess) || 0) +
+      (Number(bill.conservency) || 0) +
+      (Number(bill.pg) || 0) +
+      (Number(bill.pg_interest) || 0) +
+      (Number(bill.pf) || 0) +
+      (Number(bill.esi_pfpenalty) || 0) +
+      (Number(bill.berth_charge) || 0) +
+      (Number(bill.Debit_recovery) || 0) +
+      (Number(bill.Water_cess_charge) || 0) +
+      (Number(bill.low_scoring) || 0) +
+      (Number(bill.Material_cost_r) || 0) +
+      (Number(bill.BG_late_fee) || 0) +
+      (Number(bill.short_payment) || 0) 
+  
     )
 
   )}

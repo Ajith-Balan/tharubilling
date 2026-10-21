@@ -6,12 +6,6 @@ const router = express.Router()
 
 
 
-
-
-
-
-
-
 router.get('/getcontracts', getContracts)
 router.post('/createcontract', createcontractController)
 router.post("/bulk-create", bulkCreateContractsController);
