@@ -32,7 +32,6 @@ import Expenses from './pages/manager/Expenses';
 import Subcontract from './pages/manager/Subcontract';
 import Bganalysis from './pages/manager/Bganalysis';
 import Editbill from './pages/manager/Editbill';
-import Expenseroute from './components/Routes/expenseroute';
 // import Payslip from './pages/payslip';
 function App() {
   return (
@@ -81,9 +80,7 @@ function App() {
           </Route>
 
 
-             <Route path='/dashboard' element={<Expenseroute />} >
-
-          </Route>
+         
 
           {/* <Route path='/addsupervisors' element={<Addsupervisor />} /> */}
 
