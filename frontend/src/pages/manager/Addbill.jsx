@@ -378,7 +378,7 @@ setTimeout(() => {
             {/* Financial Amounts & Charges */}
             <div className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="text-xl font-semibold mb-5 text-gray-800 border-b pb-3">
-                Amount & Charges Details
+                Amount  Details
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div>
@@ -409,6 +409,21 @@ setTimeout(() => {
                   <label className={labelClass}>Penalty</label>
                   <input type="number" name="penalty" value={formData.penalty} onChange={handleChange} className={inputClass} />
                 </div>
+
+                 <div>
+                  <label className={labelClass}>Penalty Remarks</label>
+                  <input type="text" name="penaltyremarks" value={formData.penaltyremarks} onChange={handleChange} className={inputClass} />
+                </div>
+              </div>
+            </div>
+
+               {/* Financial Amounts & Charges */}
+            <div className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-5 text-gray-800 border-b pb-3">
+                Amount & Charges Details
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"> 
+
                 <div>
                   <label className={labelClass}>Over Payment</label>
                   <input type="number" name="overpay" value={formData.overpay} onChange={handleChange} className={inputClass} />

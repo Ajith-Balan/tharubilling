@@ -44,6 +44,9 @@ const billsSchema = new mongoose.Schema(
     penalty: {
       type: String,
     },
+      penaltyremarks: {
+      type: String,
+    },
     overpay: {
       type: String,
     },

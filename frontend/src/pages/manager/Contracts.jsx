@@ -554,6 +554,7 @@ exportContracts.forEach((contract) => {
       "End",
       "Extension",
       "Contract Value",
+      "Extended Value",
       "Work Complete",
       "Maximum Penalty",
       "Actual Penalty",
@@ -633,16 +634,25 @@ exportContracts.forEach((contract) => {
       const totalValue =
         contractValue + extendedValue;
 
-      const actualPenalty =
-        safeNumber(metrics.actualPenalty) ||
-        safeNumber(contract.penalty);
+    
 
       const maximumPenalty =
         totalValue * 0.10;
 
+                            Number(contract.contractvalue || 0);
+                            const billsForContract = matchedBills.filter((b) => b.fileno === contract.fileno);
+                            const penalty = billsForContract.reduce((sum, bill) => sum + Number(bill.penalty || 0), 0);
+                            const currentvalue = billsForContract.reduce((sum, bill) => sum + Number(bill.totalamount || 0), 0);
+                            const maxPenalty = contractValue * 0.1;
+                            const percentage = currentvalue > 0 ? ((penalty / currentvalue) * 100).toFixed(1) : 0;
+                            const isHighPenalty = Number(percentage) > 4;
+
+          const actualPenalty =
+     billsForContract.reduce((sum, bill) => sum + Number(bill.penalty || 0), 0);
+
       const penaltyPercentage =
         maximumPenalty > 0
-          ? actualPenalty / maximumPenalty
+          ? actualPenalty / contractValue
           : 0;
 
       const row = contractsWS.addRow([
@@ -658,9 +668,10 @@ exportContracts.forEach((contract) => {
         formatDate(contract.enddate),
         formatDate(contract.extension),
         totalValue,
-        safeNumber(
+        extendedValue,
+        
           metrics.billableToDatePercentage
-        ),
+        ,
         maximumPenalty,
         actualPenalty,
         penaltyPercentage,
@@ -705,11 +716,12 @@ exportContracts.forEach((contract) => {
 
       // Number formats
       row.getCell(12).numFmt = moneyFormat;
-      row.getCell(14).numFmt = moneyFormat;
+      row.getCell(13).numFmt = moneyFormat;
       row.getCell(15).numFmt = moneyFormat;
+      row.getCell(16).numFmt = moneyFormat;
 
-      row.getCell(13).numFmt = "0";
-      row.getCell(16).numFmt = "0.00%";
+      // row.getCell(14).numFmt = "0%";
+      row.getCell(17).numFmt = "0.00%";
 
       // =====================================================
       // NAME OF WORK -> CONTRACT SHEET
@@ -1213,172 +1225,166 @@ exportContracts.forEach((contract) => {
           ws.getCell(address).border =
             border;
         });
+// -------------------------------------------------------
+// DYNAMIC BILL TABLE GENERATION WITH ENTIRE ROW RED HIGHLIGHTING
+// -------------------------------------------------------
 
-      // -------------------------------------------------------
-      // BILL TABLE
-      // -------------------------------------------------------
+const contractBills = exportBills.filter(
+  (bill) => bill.fileno === fileNo
+);
 
-      const billStartRow = 16;
+// 1. Core columns that must ALWAYS be shown (including Balance)
+const fixedColumnKeys = [
+  "einvoicedate",
+  "billno",
+  "billfrom",
+  "billto",
+  "netamount",
+  "gst",
+  "totalamount",
+  "cheque",
+  "billpassdt",
+  "amountpssd",
+  "tds",
+  "gsttds",
+  "balance",
+];
 
-      const billHeaders = [
-        "Date",
-        "Bill No.",
-        "From",
-        "To",
-        "Amount",
-        "GST",
-        "Total",
-        "Cheque",
-        "Date",
-        "Amount",
-        "TDS",
-        "GST-TDS",
-        "Penalty",
-        "CC",
-        "Postal",
-        "Balance",
-      ];
+const ALL_COLUMNS = [
+  { key: "einvoicedate", label: "Date", type: "date" },
+  { key: "billno", label: "Bill No.", type: "string" },
+  { key: "billfrom", label: "From", type: "date" },
+  { key: "billto", label: "To", type: "date" },
+  { key: "netamount", label: "Amount", type: "number" },
+  { key: "gst", label: "GST", type: "number" },
+  { key: "totalamount", label: "Total", type: "number" },
+  { key: "cheque", label: "Cheque", type: "string" },
+  { key: "billpassdt", label: "Date", type: "date" },
+  { key: "amountpssd", label: "Amount Passed", type: "number" },
+  { key: "tds", label: "TDS", type: "number" },
+  { key: "gsttds", label: "GST-TDS", type: "number" },
+  { key: "penalty", label: "Penalty", type: "number" },
+  { key: "overpay", label: "Overpay", type: "number" },
+  { key: "electricity", label: "Electricity", type: "number" },
+  { key: "cess", label: "Cess", type: "number" },
+  { key: "building_cess", label: "Building Cess", type: "number" },
+  { key: "labour_cess", label: "Labour Cess", type: "number" },
+  { key: "sd", label: "SD", type: "number" },
+  { key: "deposit", label: "Deposit", type: "number" },
+  { key: "postage", label: "Postal", type: "number" },
+  { key: "postal_charge", label: "Postal Charge", type: "number" },
+  { key: "cc", label: "CC", type: "number" },
+  { key: "security", label: "Security", type: "number" },
+  { key: "postage_bill_copy", label: "Postage Bill Copy", type: "number" },
+  { key: "welfare_cess", label: "Welfare Cess", type: "number" },
+  { key: "conservency", label: "Conservancy", type: "number" },
+  { key: "pg", label: "PG", type: "number" },
+  { key: "pg_interest", label: "PG Interest", type: "number" },
+  { key: "esi", label: "ESI", type: "number" },
+  { key: "pf", label: "PF", type: "number" },
+  { key: "esi_pfpenalty", label: "ESI/PF Penalty", type: "number" },
+  { key: "Linen_Loss", label: "Linen Loss", type: "number" },
+  { key: "berth_charge", label: "Berth Charge", type: "number" },
+  { key: "other_deductions", label: "Other Deductions", type: "number" },
+  { key: "Debit_recovery", label: "Debit Recovery", type: "number" },
+  { key: "Water_cess_charge", label: "Water Cess Charge", type: "number" },
+  { key: "low_scoring", label: "Low Scoring", type: "number" },
+  { key: "Material_cost_r", label: "Material Cost R", type: "number" },
+  { key: "BG_late_fee", label: "BG Late Fee", type: "number" },
+  { key: "ESI_PF_R", label: "ESI PF R", type: "number" },
+  { key: "short_payment", label: "Short Payment", type: "number" },
+  { key: "balance", label: "Balance", type: "number" },
+];
 
-      const billHeaderRow =
-        ws.getRow(billStartRow);
+// 2. Filter active columns
+const activeColumns = ALL_COLUMNS.filter((col) => {
+  if (fixedColumnKeys.includes(col.key)) {
+    return true;
+  }
 
-      billHeaders.forEach(
-        (header, index) => {
-          const cell =
-            billHeaderRow.getCell(
-              index + 1
-            );
+  return contractBills.some((bill) => {
+    const val = bill[col.key];
+    if (col.type === "number") return safeNumber(val) !== 0;
+    return val !== undefined && val !== null && String(val).trim() !== "";
+  });
+});
 
-          cell.value = header;
+// 3. Render Headers
+const billStartRow = 16;
+const billHeaderRow = ws.getRow(billStartRow);
 
-          cell.font = {
-            bold: true,
-          };
+activeColumns.forEach((col, index) => {
+  const cell = billHeaderRow.getCell(index + 1);
+  cell.value = col.label;
+  cell.font = { bold: true };
+  cell.alignment = { horizontal: "center", vertical: "middle" };
+  cell.border = border;
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: COLORS.grey },
+  };
+});
 
-          cell.alignment = {
-            horizontal: "center",
-            vertical: "middle",
-          };
+// 4. Populate Data Rows
+contractBills.forEach((bill, billIdx) => {
+  const row = ws.getRow(billStartRow + 1 + billIdx);
 
-          cell.border = border;
+  // Check if Amount Passed is empty, null, or zero for this specific bill
+  const passedAmount = safeNumber(bill.amountpssd);
+  const isUnpassed = !bill.amountpssd || passedAmount === 0;
 
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: {
-              argb: COLORS.grey,
-            },
-          };
-        }
-      );
+  activeColumns.forEach((col, colIdx) => {
+    const cell = row.getCell(colIdx + 1);
+    const rawVal = bill[col.key];
 
-      const contractBills =
-        exportBills.filter(
-          (bill) =>
-            bill.fileno === fileNo
-        );
+    if (col.key === "balance") {
+      const total = safeNumber(bill.totalamount);
+      const totalDeductions = [
+        "tds", "gsttds", "penalty", "overpay", "electricity", "cess", 
+        "building_cess", "labour_cess", "sd", "deposit", "postage", 
+        "postal_charge", "cc", "security", "postage_bill_copy", 
+        "welfare_cess", "conservency", "pg", "pg_interest", "esi", 
+        "pf", "esi_pfpenalty", "Linen_Loss", "berth_charge", 
+        "other_deductions", "Debit_recovery", "Water_cess_charge", 
+        "low_scoring", "Material_cost_r", "BG_late_fee", "ESI_PF_R", "short_payment"
+      ].reduce((sum, key) => sum + safeNumber(bill[key]), 0);
 
-      contractBills.forEach(
-        (bill, index) => {
-          const row =
-            ws.getRow(
-              billStartRow + 1 + index
-            );
+      cell.value = total - passedAmount - totalDeductions;
+      cell.alignment = { horizontal: "right", vertical: "middle" };
+      cell.numFmt = moneyFormat;
+    } 
+    else if (col.key === "amountpssd") {
+      cell.value = passedAmount;
+      cell.alignment = { horizontal: "right", vertical: "middle" };
+      cell.numFmt = moneyFormat;
+    } 
+    else if (col.type === "date") {
+      cell.value = formatDate(rawVal || "");
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+    } 
+    else if (col.type === "number") {
+      cell.value = safeNumber(rawVal);
+      cell.alignment = { horizontal: "right", vertical: "middle" };
+      cell.numFmt = moneyFormat;
+    } 
+    else {
+      cell.value = rawVal || (col.key === "cheque" ? "TFR" : "");
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+    }
 
-          const values = [
-            formatDate(
-              bill.einvoicedate ||
-              ""
-            ),
+    // Apply red font color to the entire row if the bill has no amount passed
+    if (isUnpassed) {
+      cell.font = {
+        color: { argb: "FFFF0000" }, // Red text color
+      };
+    }
 
-            bill.billno ||
-             
-              "",
+    cell.border = border;
+  });
 
-            formatDate(bill.billfrom),
-
-            formatDate(bill.billto),
-
-            safeNumber(
-              bill.netamount
-            ),
-
-            safeNumber(
-              bill.gst
-            ),
-
-            safeNumber(
-              bill.totalamount
-            ),
-
-            bill.cheque ||
-              
-              "TFR",
-
-            formatDate(
-              bill.billpassdt
-            ),
-
-            safeNumber(
-              bill.amountpssd
-            ),
-
-            safeNumber(
-              bill.tds
-            ),
-
-            safeNumber(
-              bill.gsttds
-            ),
-
-            safeNumber(
-              bill.penalty
-            ),
-
-            safeNumber(
-              bill.cc
-            ),
-
-            safeNumber(
-              bill.postage
-            ),
-
-            safeNumber(
-              bill.balance
-            ),
-          ];
-
-          values.forEach(
-            (value, colIndex) => {
-              const cell =
-                row.getCell(
-                  colIndex + 1
-                );
-
-              cell.value = value;
-              cell.border = border;
-
-              cell.alignment = {
-                horizontal:
-                  colIndex >= 4
-                    ? "right"
-                    : "center",
-                vertical: "middle",
-              };
-
-              if (
-                colIndex >= 4
-              ) {
-                cell.numFmt =
-                  moneyFormat;
-              }
-            }
-          );
-
-          row.height = 20;
-        }
-      );
-
+  row.height = 20;
+});
       // -------------------------------------------------------
       // BILLS LINK
       // -------------------------------------------------------
