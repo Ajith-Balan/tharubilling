@@ -14,6 +14,7 @@ import {
   FaFolderOpen,
   FaBell,
   FaFileExcel,
+  FaCalendarAlt
 } from "react-icons/fa";
 import ExcelJS from "exceljs";
 import { useNavigate } from "react-router-dom";
@@ -183,6 +184,9 @@ const Contracts = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [divisionFilter, setDivisionFilter] = useState("All");
   const [subFilter, setSubFilter] = useState("All");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  
   const [sortBy, setSortBy] = useState("all");
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -313,6 +317,17 @@ const Contracts = () => {
 
     if (divisionFilter !== "All" && contract.division !== divisionFilter) {
       return false;
+    }
+
+       if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+       return contract.startdate && new Date(contract.startdate) >= start;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    return  contract.startdate && new Date(contract.startdate) <= end;
     }
 
     const searchLower = searchTerm.toLowerCase();
@@ -745,140 +760,9 @@ exportContracts.forEach((contract) => {
         };
       }
 
-      // File No -> Contract sheet
-      // if (sheetName) {
-      //   row.getCell(6).value = {
-      //     text: contract.contractNumber || "",
-      //     hyperlink: `#'${sheetName}'!A1`,
-      //   };
-
-      //   row.getCell(6).font = {
-      //     color: {
-      //       argb: COLORS.blue,
-      //     },
-      //     underline: true,
-      //   };
-      // }
+   
     });
 
-    // =========================================================
-    // 2. ALL BILLS SHEET
-    // =========================================================
-
-    const billsWS =
-      workbook.addWorksheet("Bills");
-
-    billsWS.views = [
-      {
-        state: "frozen",
-        ySplit: 1,
-      },
-    ];
-
-    billsWS.columns = [
-      { width: 18 },
-      { width: 18 },
-      { width: 15 },
-      { width: 15 },
-      { width: 18 },
-      { width: 18 },
-      { width: 15 },
-      { width: 15 },
-      { width: 15 },
-      { width: 15 },
-    ];
-
-    const billHeaders = [
-      "File No.",
-      "Bill No.",
-      "Date",
-      "From",
-      "To",
-      "Amount",
-      "GST",
-      "Total",
-      "Collection",
-      "Penalty",
-    ];
-
-    const billHeaderRow =
-      billsWS.addRow(billHeaders);
-
-    billHeaderRow.height = 25;
-
-    billHeaderRow.eachCell((cell) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: {
-          argb: COLORS.yellow,
-        },
-      };
-
-      cell.font = {
-        bold: true,
-        color: {
-          argb: COLORS.blue,
-        },
-      };
-
-      cell.alignment = {
-        horizontal: "center",
-        vertical: "middle",
-      };
-
-      cell.border = border;
-    });
-
-    exportBills.forEach((bill) => {
-      const row = billsWS.addRow([
-        bill.fileno || "",
-      
-        bill.billno || "",
-
-        formatDate(
-          bill.einvoicedate 
-         
-        ),
-        formatDate(bill.billfrom),
-        formatDate(bill.billto),
-        safeNumber(bill.netamount),
-        safeNumber(bill.gst),
-        safeNumber(bill.totalamount),
-        safeNumber(bill.amountpssd),
-        safeNumber(bill.penalty),
-      ]);
-
-      row.eachCell((cell) => {
-        cell.border = border;
-        cell.alignment = {
-          vertical: "middle",
-        };
-      });
-
-      row.getCell(6).numFmt = moneyFormat;
-      row.getCell(7).numFmt = moneyFormat;
-      row.getCell(8).numFmt = moneyFormat;
-      row.getCell(9).numFmt = moneyFormat;
-      row.getCell(10).numFmt = moneyFormat;
-
-      const sheetName =
-        contractSheetMap.get(bill.fileno);
-
-      if (sheetName) {
-        row.getCell(1).value = {
-          text: bill.fileno || "",
-          hyperlink: `#'${sheetName}'!A1`,
-        };
-
-        row.getCell(1).font = {
-          color: {
-            argb: COLORS.blue,
-          },
-          underline: true,
-        };
-      }
-    });
 
     // =========================================================
     // 3. INDIVIDUAL CONTRACT SHEETS
@@ -1385,23 +1269,7 @@ contractBills.forEach((bill, billIdx) => {
 
   row.height = 20;
 });
-      // -------------------------------------------------------
-      // BILLS LINK
-      // -------------------------------------------------------
-
-      ws.getCell("P1").value = {
-        text: "ALL BILLS",
-        hyperlink: "#'Bills'!A1",
-      };
-
-      ws.getCell("P1").font = {
-        bold: true,
-        color: {
-          argb: COLORS.blue,
-        },
-        underline: true,
-      };
-
+    
       // -------------------------------------------------------
       // GENERAL FORMATTING
       // -------------------------------------------------------
@@ -1789,49 +1657,71 @@ contractBills.forEach((bill, billIdx) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-4">
-            <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
-              <input
-                type="radio"
-                name="subFilter"
-                checked={subFilter === "All"}
-                onChange={() => {
-                  setSubFilter("All");
-                  setCurrentPage(1);
-                }}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span className="text-xs font-medium text-slate-600">All</span>
-            </label>
+         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
 
-            <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
-              <input
-                type="radio"
-                name="subFilter"
-                checked={subFilter === "sub"}
-                onChange={() => {
-                  setSubFilter("sub");
-                  setCurrentPage(1);
-                }}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span className="text-xs font-medium text-slate-600">Only Sub</span>
-            </label>
 
-            <label className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-md bg-white cursor-pointer">
-              <input
-                type="radio"
-                name="subFilter"
-                checked={subFilter === "removeSub"}
-                onChange={() => {
-                  setSubFilter("removeSub");
-                  setCurrentPage(1);
-                }}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span className="text-xs font-medium text-slate-600">Remove Sub</span>
-            </label>
-          </div>
+                 {/* DATE RANGE FILTERS */}
+                              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-600">
+                                <div className="flex items-center space-x-2">
+                                  <FaCalendarAlt className="text-slate-400" />
+                                  <span>From  Date:</span>
+                                  <input 
+                                    type="date" 
+                                    value={startDate} 
+                                    onChange={(e) => {
+                                      setStartDate(e.target.value);
+                                      setCurrentPage(1);
+                                    }}
+                                    className="border border-slate-200 rounded-md p-1 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-mono"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span>To Date:</span>
+                                  <input 
+                                    type="date" 
+                                    value={endDate} 
+                                    onChange={(e) => {
+                                      setEndDate(e.target.value);
+                                      setCurrentPage(1);
+                                    }}
+                                    className="border border-slate-200 rounded-md p-1 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-mono"
+                                  />
+                                </div>
+                                {(startDate || endDate) && (
+                                  <button 
+                                    onClick={() => { setStartDate(""); setEndDate(""); setCurrentPage(1); }}
+                                    className="text-red-500 hover:text-red-700 underline font-semibold cursor-pointer ml-auto"
+                                  >
+                                    Clear Range
+                                  </button>
+                                )}
+                              </div>
+        
+
+                        <div className=" flex items-center  p-1 rounded-xl shadow-sm gap-1">
+                    {[
+                    { label: "All", value: "All" },
+                    { label: "Sub Only", value: "sub" },
+                { label: "Remove Sub", value: "removeSub" },
+             ].map((item) => (
+      <button
+        key={item.value}
+        onClick={() => {
+          setSubFilter(item.value);
+          setCurrentPage(1);
+        }}
+        className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+          subFilter === item.value
+            ? "bg-slate-800 text-white shadow"
+            : "text-slate-600 bg-white hover:bg-slate-100"
+        }`}
+      >
+        {item.label}
+      </button>
+    ))}
+  </div>
+
+  </div>
 
           {/* Counter */}
           <div className="mb-4 flex justify-between items-center">
