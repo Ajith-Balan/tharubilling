@@ -157,22 +157,39 @@ const filteredAndSortedBills = useMemo(() => {
       });
     }
 
+    
     // Filter bills based on Owner filter ("All", "Sub Only", "Remove Sub")
-    if (ownerFilter !== "All") {
-      result = result.filter((bill) => {
-        const contract = contractsMap[bill.fileno];
-        if (!contract) return false;
-        const owner = (contract.owner || "").toString().trim().toLowerCase();
-        
-        if (ownerFilter === "Sub Only") {
-          return owner === "sub";
-        }
-        if (ownerFilter === "Remove Sub") {
-          return owner !== "sub";
-        }
-        return true;
-      });
+   // OWNER FILTER
+if (ownerFilter !== "All") {
+  result = result.filter((bill) => {
+    const billFileNo = String(bill.fileno || "")
+      .trim()
+      .toLowerCase();
+
+    const contract = Object.values(contractsMap).find(
+      (c) =>
+        String(c.fileno || "").trim().toLowerCase() === billFileNo
+    );
+
+    if (!contract) return false;
+
+    const owner = String(contract.owner || "")
+      .trim()
+      .toLowerCase();
+
+    const isSub = owner === "sub" || owner.includes("sub ");
+
+    if (ownerFilter === "Sub Only") {
+      return isSub;
     }
+
+    if (ownerFilter === "Remove Sub") {
+      return !isSub;
+    }
+
+    return true;
+  });
+}
 
     if (startDate) {
       const start = new Date(startDate);
@@ -217,55 +234,78 @@ const filteredAndSortedBills = useMemo(() => {
   return groups;
 }, [contractFilteredBills]);
 
-// Updated to filter out empty contracts when E-Invoice Pending OR Date filters are active
-  const allContracts = useMemo(() => {
-    let contracts = Object.values(contractsMap);
+// Filter contracts based on matching bills
+const allContracts = useMemo(() => {
+  let contracts = Object.values(contractsMap);
 
-    // Set of file numbers that have matching bills after status/date/search filtering
-    const matchingFileNos = new Set(
-      filteredAndSortedBills.map((b) => String(b.fileno || "").toLowerCase())
+  // Normalize file numbers to avoid spaces/case mismatch
+  const normalizeFileNo = (value) =>
+    String(value || "").trim().toLowerCase();
+
+  // File numbers with matching filtered bills
+  const matchingFileNos = new Set(
+    filteredAndSortedBills.map((b) => normalizeFileNo(b.fileno))
+  );
+
+  const isDateFiltered = Boolean(startDate || endDate);
+
+  // Hide empty contracts when these filters are active
+  if (
+    statusFilter === "E-Invoice_Pending" ||
+    statusFilter === "PASSED" ||
+    isDateFiltered ||
+    ownerFilter !== "All"
+  ) {
+    contracts = contracts.filter((c) =>
+      matchingFileNos.has(normalizeFileNo(c.fileno))
     );
+  }
 
-    // Hide empty contracts when E-Invoice Pending OR a Date Filter is selected
-    const isDateFiltered = Boolean(startDate || endDate);
-    if (statusFilter === "E-Invoice_Pending" || isDateFiltered ||  statusFilter === "PASSED") {
-      contracts = contracts.filter((c) =>
-        matchingFileNos.has(String(c.fileno || "").toLowerCase())
-      );
-    }
+  // Search filter
+  if (searchQuery.trim() !== "") {
+    const q = searchQuery.trim().toLowerCase();
 
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase();
-      contracts = contracts.filter(
-        (c) =>
-          matchingFileNos.has(String(c.fileno || "").toLowerCase()) ||
-          String(c.fileno || "").toLowerCase().includes(q) ||
-          String(c.workname || "").toLowerCase().includes(q)
-      );
-    }
-
-    if (contractTab !== "All") {
-      contracts = contracts.filter(
-        (c) => (c.status || "").toLowerCase() === contractTab.toLowerCase()
-      );
-    }
-
-    if (divisionFilter !== "All") {
-      contracts = contracts.filter(
-        (c) => c.division === divisionFilter
-      );
-    }
-
-    return contracts.sort((a, b) =>
-      String(b.fileno).localeCompare(
-        String(a.fileno),
-        undefined,
-        { numeric: true }
-      )
+    contracts = contracts.filter(
+      (c) =>
+        normalizeFileNo(c.fileno).includes(q) ||
+        String(c.workname || "").toLowerCase().includes(q)
     );
-  }, [contractsMap, contractTab, divisionFilter, searchQuery, statusFilter, startDate, endDate, filteredAndSortedBills]);
+  }
 
+  // Contract status filter
+  if (contractTab !== "All") {
+    contracts = contracts.filter(
+      (c) =>
+        String(c.status || "").toLowerCase() ===
+        contractTab.toLowerCase()
+    );
+  }
 
+  // Division filter
+  if (divisionFilter !== "All") {
+    contracts = contracts.filter(
+      (c) => c.division === divisionFilter
+    );
+  }
+
+  return contracts.sort((a, b) =>
+    String(b.fileno || "").localeCompare(
+      String(a.fileno || ""),
+      undefined,
+      { numeric: true }
+    )
+  );
+}, [
+  contractsMap,
+  contractTab,
+  divisionFilter,
+  searchQuery,
+  statusFilter,
+  startDate,
+  endDate,
+  ownerFilter,
+  filteredAndSortedBills,
+]);
 
   
 

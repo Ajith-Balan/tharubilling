@@ -549,6 +549,8 @@ exportContracts.forEach((contract) => {
       { width: 18 },  // Maximum
       { width: 18 },  // Actual Penalty
       { width: 14 },  // % Penalty
+      { width: 16 },  // Billed + unbilled
+      { width: 16 },  // balance to be billed
    
       { width: 16 },  // Status
       { width: 14 },  // Owner
@@ -574,6 +576,8 @@ exportContracts.forEach((contract) => {
       "Maximum Penalty",
       "Actual Penalty",
       "% Penalty",
+      "Billed + Unbilled",
+      "Balance to be Billed",
     
       "Status",
       "Owner",
@@ -690,6 +694,9 @@ exportContracts.forEach((contract) => {
         maximumPenalty,
         actualPenalty,
         penaltyPercentage,
+     Math.round(metrics.currentBillableValue).toLocaleString("en-IN"),
+     Math.round(metrics.balanceToBill).toLocaleString("en-IN"),
+
    
         contract.status || "",
         contract.owner || "",
@@ -2016,6 +2023,8 @@ contractBills.forEach((bill, billIdx) => {
                             <div className={`h-full ${progressColor} transition-all duration-300`} style={{ width: `${Math.min(100, metrics.billableToDatePercentage)}%` }} />
                           </div>
                         </div>
+
+                        
                       </div>
 
                       {/* Footer Details */}

@@ -11,7 +11,7 @@ import {
   getoneSupervisor,
   getManagers,
 } from '../controllers/authcontroller.js';
-import {  isAdminn, isManager, isManagerr, requireSignIn } from '../middlewares/authmiddleware.js';
+import {   isManager,  isSiteManager, isSuperAdmin, requireSignIn } from '../middlewares/authmiddleware.js';
 
 const router = express.Router();
 
@@ -46,11 +46,11 @@ router.get('/managerauth', requireSignIn,  isManager, (req, res) => {
 });
 
 // Admin Access
-router.get('/adminauthh', requireSignIn,  isAdminn, (req, res) => {
+router.get('/adminauthh', requireSignIn,  isSuperAdmin, (req, res) => {
   res.status(200).send({ ok: true });
 });
 
-router.get('/managerauthh', requireSignIn,  isManagerr, (req, res) => {
+router.get('/managerauthh', requireSignIn,  isSiteManager, (req, res) => {
   res.status(200).send({ ok: true });
 });
 

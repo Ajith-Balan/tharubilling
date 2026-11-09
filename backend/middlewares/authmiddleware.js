@@ -71,7 +71,7 @@ export const isAdmin = async (req, res, next) => {
 
 
 // Admin access
-export const isAdminn = async (req, res, next) => {
+export const isSuperAdmin = async (req, res, next) => {
   try {
     const user = await usermodel.findById(req.user._id);
     if (user.role !== 2) {
@@ -97,7 +97,7 @@ export const isAdminn = async (req, res, next) => {
 
 
 
-export const isManagerr = async (req, res, next) => {
+export const isSiteManager = async (req, res, next) => {
   try {
     const user = await usermodel.findById(req.user._id);
     if (user.role !== 3) {
