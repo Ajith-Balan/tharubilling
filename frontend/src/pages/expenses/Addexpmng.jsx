@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { FaSearch, FaChevronDown, FaCheck, FaFileContract } from "react-icons/fa";
+import Layout from "../../components/layout/Layout";
 
 const Addexpmng = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -208,6 +209,7 @@ const handleStateChange = async (e) => {
     "w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-yellow-700/20 focus:border-yellow-800 transition text-sm bg-white";
 
   return (
+    <Layout title={"Add Expense Manager - Tharu & Sons"}>
     <div className="min-h-screen bg-gray-50 py-8 px-3 sm:px-6">
 
       <main className="max-w-4xl mx-auto">
@@ -535,6 +537,7 @@ const handleStateChange = async (e) => {
 
       </main>
     </div>
+    </Layout>
   );
 };
 

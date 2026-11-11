@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/Auth";
-
+import Layout from "../../components/layout/Layout";
 const Explogin = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -71,7 +71,7 @@ const Explogin = () => {
   };
 
   return (
-    <div>
+    <Layout title={"Expenses Login - Tharu & Sons"}>
         <div className="flex justify-center items-center h-screen bg-gray-100">
           <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
             <h2 className="text-2xl font-bold text-center mb-8"> Login</h2>
@@ -120,7 +120,7 @@ const Explogin = () => {
             </form>
           </div>
         </div>
-    </div>
+    </Layout>
   );
 };
 

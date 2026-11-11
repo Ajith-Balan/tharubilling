@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/Auth";
-
+import Layout from "../../components/layout/Layout";
 import {
   FaHistory,
   FaPaperPlane,
@@ -304,6 +304,7 @@ const handleLogout = () => {
   };
 
   return (
+    <Layout title={`Dashboard - ${auth?.user?.name || "User"}`}>
     <div className="min-h-screen bg-[#f4f6fb] text-slate-800 pb-44 sm:pb-32">
 
       <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-7 space-y-5">
@@ -862,6 +863,7 @@ const handleLogout = () => {
       </div>
 
     </div>
+    </Layout>
   );
 };
 

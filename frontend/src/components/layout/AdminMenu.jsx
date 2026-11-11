@@ -19,6 +19,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { BsChatText } from "react-icons/bs";
+import { IoSparkles } from "react-icons/io5";
 
 const ManagerMenu = () => {
   const [auth, setAuth] = useAuth();
@@ -64,14 +65,16 @@ const ManagerMenu = () => {
   }, []);
 
   const menuItems = [
-    { to: "/dashboard/manager", label: "Home", icon: <FaHome /> },
+    { to: "/dashboard/manager", label: "Home", icon: <FaHome className="text-orange-600" /> },
 
-    { to: "/dashboard/manager/contracts", label: "Contracts", icon: <FaClipboardList /> },
-    { to: "/dashboard/manager/createcontracts", label: "Create Contract", icon: <FaUserTie /> },
-     { to: "/dashboard/manager/billdetails", label: "All Bills", icon: <FaFileInvoiceDollar /> },
-     { to: "/dashboard/manager/addbills", label: "Add Bill", icon: <FaFileInvoiceDollar /> },
-    { to: "/dashboard/manager/profitability", label: "Profitability", icon: <FaChartLine /> },
-    { to: "/dashboard/manager/penalty", label: "Penalty Sheet", icon: <FaCheckCircle /> },
+    { to: "/dashboard/manager/contracts", label: "Contracts", icon: <FaClipboardList className="text-violet-600" /> },
+    { to: "/dashboard/manager/createcontracts", label: "Create Contract", icon: <FaUserTie className="text-yellow-600" /> },
+     { to: "/dashboard/manager/billdetails", label: "All Bills", icon: <FaFileInvoiceDollar  className="text-blue-600"  /> },
+     { to: "/dashboard/manager/addbills", label: "Add Bill", icon: <FaFileInvoiceDollar className="text-green-600" /> },
+
+{ to: "/dashboard/manager/allsites", label: ( <span className="flex items-center justify-between w-full gap-2"><span>Expenses</span><span className="flex items-center gap-1 text-[10px] font-bold text-purple-600"> <IoSparkles className="text-yellow-400 animate-spin" /> NEW  </span> </span>), icon: <FaFileInvoiceDollar className="text-red-500" /> }, 
+ { to: "/dashboard/manager/penalty", label: "Penalty Sheet", icon: <FaCheckCircle className="text-green-800" /> },
+        { to: "/dashboard/manager/profitability", label: "Profitability", icon: <FaChartLine className="text-pink-600" /> },
 
      
 

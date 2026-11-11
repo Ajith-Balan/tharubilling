@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
-
+import Layout from "../../components/layout/Layout";
 import {
   FaSearch,
   FaMapMarkerAlt,
@@ -264,6 +264,7 @@ const Allsites = () => {
   // ==========================================
 
   return (
+    <Layout title={"All Sites - Tharu & Sons"}>
     <div className="min-h-screen bg-slate-50 p-3 pb-24 sm:p-5 lg:p-6">
 
       <div className="mx-auto max-w-[1700px] space-y-4">
@@ -904,6 +905,7 @@ const Allsites = () => {
       )}
 
     </div>
+    </Layout>
   );
 };
 

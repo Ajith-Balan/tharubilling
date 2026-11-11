@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/Auth";
 import { useParams } from "react-router-dom";
-
+import Layout from "../../components/layout/Layout";
 import {
   FaHistory,
   FaPaperPlane,
@@ -181,6 +181,7 @@ const Cashbookadmin = () => {
   ];
 
   return (
+    <Layout title={`Cashbook - ${auth?.user?.name || "User"}`}>
     <div className="min-h-screen bg-slate-100 p-2 sm:p-6 pb-24">
       <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
         
@@ -375,6 +376,7 @@ const Cashbookadmin = () => {
 
       </div>
     </div>
+    </Layout>
   );
 };
 

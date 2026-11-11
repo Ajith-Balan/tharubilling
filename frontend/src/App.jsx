@@ -54,7 +54,7 @@ function App() {
         <Route path='/login' element={<Login />} />
         <Route path='/forget' element={<Forget />} />
         {/* <Route path='/managerlogin' element={<Managerlogin />} /> */}
-        <Route path='/managerlogin' element={<Explogin />} />
+        <Route path='/managerlogin' element={<Explogin/>} />
          {/* <Route path='/user/dashboard' element={<Dashboard />}  */}
 
      

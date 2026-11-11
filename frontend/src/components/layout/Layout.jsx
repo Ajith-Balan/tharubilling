@@ -9,8 +9,8 @@ import BackButton from './BackButton';
 const Layout = ({
   children,
   title = "Tharu & sons ",
-  description = "clothing shop Explore our latest collections, enjoy exclusive discounts, and experience fashion like never before at CJ Attire—where style meets comfort!",
-  keywords = "https://cj-attire.onrender.com cjattire.com cj-attire.onrender.com cloth,tshirt,dress cj attire,CJ-ATTIRE,CJ ATTIRE, oversized t shirt,kids",
+  description = "Tharu & Sons is a professional service provider specializing in railway cleaning, coach housekeeping, bed sheet and linen laundry services, and facility management. We are committed to delivering reliable, hygienic, and quality services with a focus on customer satisfaction and operational excellence across India.",
+  keywords = "Tharu and Sons, Tharu & Sons, railway cleaning services, railway housekeeping services, train cleaning contractors, railway coach cleaning, railway laundry services, railway linen management, bed sheet laundry services, railway bed sheet washing, train housekeeping, railway facility management, coach maintenance services, Indian railway contractors, railway sanitation services, professional housekeeping services, commercial laundry services, train cleaning company, railway service provider, railway maintenance contractor, facility management Kerala, housekeeping company Kerala, laundry services India.",
   author = "ajith-balan"
 }) => {
   return (
