@@ -11,8 +11,10 @@ import {
   FaChartLine,
   FaBell,
   FaBars,
-  FaTimes
+  FaTimes,
+  
 } from "react-icons/fa"; 
+import{IoSparkles} from "react-icons/io5";
 import { CheckCircle } from "lucide-react";
 
 const Managerhome = () => {
@@ -206,6 +208,18 @@ const Managerhome = () => {
               onClick={() => navigate("/dashboard/manager/penalty")} 
             />
 
+                <DashboardCard 
+              title="Site Expenses" 
+              subtitle="Site expenses"
+             
+              NEW="NEW"
+              icon={<FaUserTie className="w-4 h-4 sm:w-6 sm:h-6 text-amber-600" />}
+              gradient="from-amber-500/10 to-orange-500/5"
+              borderColor="hover:border-amber-500"
+             
+              onClick={() => navigate("/dashboard/manager/allsites")}
+            />
+
             <DashboardCard 
               title="Profitability" 
               subtitle="Margin analysis"
@@ -236,16 +250,6 @@ const Managerhome = () => {
               onClick={() => navigate("/dashboard/manager/subcontractors")} 
             />
 
-            <DashboardCard 
-              title="Site Expenses" 
-              subtitle="Site expenses"
-              content="Coming Soon"
-              icon={<FaUserTie className="w-4 h-4 sm:w-6 sm:h-6 text-amber-600" />}
-              gradient="from-amber-500/10 to-orange-500/5"
-              borderColor="hover:border-amber-500"
-              isAction={true}
-              onClick={() => navigate("/dashboard/manager/expenses")}
-            />
           </div>
         </main>
       </div>
@@ -253,7 +257,7 @@ const Managerhome = () => {
   );
 };
 
-const DashboardCard = ({ title, subtitle, icon, gradient, content, borderColor, isAction = false, onClick }) => {
+const DashboardCard = ({ title, subtitle, icon, gradient, content, borderColor,NEW, isAction = false, onClick }) => {
   return (
     <div 
       onClick={onClick}
@@ -270,6 +274,14 @@ const DashboardCard = ({ title, subtitle, icon, gradient, content, borderColor, 
           <span className="text-gray-400 group-hover:text-gray-900 transition-colors duration-300 transform group-hover:translate-x-1 font-semibold text-xs sm:text-base">
             {isAction ? "＋" : "→"}
           </span>
+
+      {NEW && (
+  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-purple-100 via-pink-100 to-yellow-100 text-purple-700 font-bold text-[10px] sm:text-xs shadow-sm">
+    <IoSparkles className="text-yellow-500 animate-[spin_3s_linear_infinite]" />
+    <span className="animate-pulse">NEW</span>
+    <IoSparkles className="text-pink-500 animate-ping text-[9px]" />
+  </span>
+)}
         </div>
 
         <div>

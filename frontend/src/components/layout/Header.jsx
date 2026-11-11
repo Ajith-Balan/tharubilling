@@ -53,9 +53,20 @@ const Header = () => {
                 </>
               ) : (
                 <>
-                  <Link to="/dashboard/user" className="text-gray-800 text-sm">
-                    {auth.user.name}
-                  </Link>
+                 <Link
+  to={
+    auth?.user?.role === 1
+      ? "/dashboard/manager"
+      : auth?.user?.role === 0
+      ? "/dashboard/user"
+      : auth?.user?.role === 2
+      ? "/dashboard/exp"
+      : "/"
+  }
+  className="text-gray-800 text-sm"
+>
+  {auth?.user?.name}
+</Link>
                   <button
                     onClick={handleLogout}
                     className="text-gray-800 hover:text-red-400 text-sm font-medium"

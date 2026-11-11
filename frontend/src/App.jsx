@@ -14,6 +14,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import PrivateRoute from './components/Routes/PrivateRoute';
 import ManagerRoute from './components/Routes/AdminRoute';
+import ExpenseRoute from './components/Routes/ExpenseRoute';
 
 import Forget from './pages/Auth/Forget';
 import Managerhome from './pages/manager/Managerhome';
@@ -32,6 +33,11 @@ import Expenses from './pages/manager/Expenses';
 import Subcontract from './pages/manager/Subcontract';
 import Bganalysis from './pages/manager/Bganalysis';
 import Editbill from './pages/manager/Editbill';
+import Allsites from './pages/expenses/Allsites';
+import Addexpmng from './pages/expenses/Addexpmng';
+import Cashbookadmin from './pages/expenses/Cashbookadmin';
+import Dashboarduser from './pages/expenses/Dashboarduser';
+import Explogin from './pages/expenses/explogin';
 // import Payslip from './pages/payslip';
 function App() {
   return (
@@ -47,7 +53,8 @@ function App() {
         <Route path='/register' element={<Register />} />
         <Route path='/login' element={<Login />} />
         <Route path='/forget' element={<Forget />} />
-        <Route path='/managerlogin' element={<Managerlogin />} />
+        {/* <Route path='/managerlogin' element={<Managerlogin />} /> */}
+        <Route path='/managerlogin' element={<Explogin />} />
          {/* <Route path='/user/dashboard' element={<Dashboard />}  */}
 
      
@@ -76,9 +83,20 @@ function App() {
        <Route path='manager/subcontractors' element={<Subcontract />} />
        <Route path='manager/bganalysis' element={<Bganalysis />} />
 
-         
+       {/* EXPENSES */}
+       <Route path='manager/allsites' element={<Allsites />} />
+       <Route path='manager/addexpmanager' element={<Addexpmng />} />
+       <Route path='manager/cashbookdetails/:email' element={<Cashbookadmin />} />
+       
+
+      
           </Route>
 
+{/* expenses manager */}
+   <Route path='/dashboard' element={<ExpenseRoute />} >
+          <Route path='exp' element={<Dashboarduser />} />
+
+          </Route>
 
          
 

@@ -258,7 +258,10 @@ useEffect(() => {
     navigate("/dashboard/manager");
   } else if (auth?.user?.role === 0) {
     navigate("/dashboard/user");
-  }
+    } else if (auth?.user?.role === 2) {
+    navigate("/dashboard/exp");
+    }
+  
   // Remove the 'else' block that navigates to "/"
 }, [auth?.user?.role, navigate]); // Only run when role changes
 
@@ -433,7 +436,7 @@ useEffect(() => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-white group-hover:text-blue-300 transition text-base truncate">Site Manager Portal</h3>
+                    <h3 className="font-bold text-white group-hover:text-blue-300 transition text-base truncate">Daily Expense Management Portal</h3>
                     <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition shrink-0" />
                   </div>
                   {/* <p className="text-xs text-slate-400 mt-1 line-clamp-2">Linen inventory, OBHS logs, site staff shift scheduling & coach batch tracking</p> */}
