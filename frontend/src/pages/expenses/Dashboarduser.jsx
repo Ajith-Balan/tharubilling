@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -17,6 +16,8 @@ import {
   FaArrowDown,
   FaArrowUp,
   FaCalendarAlt,
+  FaTrashAlt,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -61,6 +62,10 @@ const Dashboarduser = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  
+  // State for the delete confirmation modal
+  const [deleteModalItem, setDeleteModalItem] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -135,17 +140,17 @@ const Dashboarduser = () => {
   }, []);
 
   // Logout
-const handleLogout = () => {
-  setProfileOpen(false);
-  setAuth({ ...auth, user: null, token: "" });
-  localStorage.removeItem("auth");
+  const handleLogout = () => {
+    setProfileOpen(false);
+    setAuth({ ...auth, user: null, token: "" });
+    localStorage.removeItem("auth");
 
-  toast.success("Logout successfully");
+    toast.success("Logout successfully");
 
-  setTimeout(() => {
-    navigate("/");
-  }, 2000);
-};
+    setTimeout(() => {
+      navigate("/");
+    }, 2000);
+  };
 
   // Month navigation
   const handlePrevMonth = () => {
@@ -196,7 +201,7 @@ const handleLogout = () => {
       );
   }, [transactions, selectedYear, selectedMonth]);
 
-  // Monthly calculations (credit/debit are for the selected month only)
+  // Monthly calculations
   const totalCredit = monthFilteredTransactions.reduce(
     (sum, item) => sum + Number(item.credit || 0),
     0
@@ -207,11 +212,8 @@ const handleLogout = () => {
     0
   );
 
-  // Closing balance carries forward as next month's opening balance
   const balance = openingBalance + totalCredit - totalDebit;
 
-  // Calculate running balance using ALL monthly transactions first.
-  // Search only hides rows; it does not change the running balance values.
   let runningBalance = openingBalance;
 
   const allTransactionsWithBalance = monthFilteredTransactions.map((item) => {
@@ -275,7 +277,6 @@ const handleLogout = () => {
 
       const newBill = res.data.bill || res.data;
 
-      // Latest transaction stays at the bottom
       setTransactions((prev) =>
         [...prev, newBill].sort(
           (a, b) => getTimestamp(a.date) - getTimestamp(b.date)
@@ -290,7 +291,6 @@ const handleLogout = () => {
 
       toast.success("Bill added successfully!");
 
-      // Move to current month
       setCurrentDate(new Date());
       setSearch("");
     } catch (error) {
@@ -303,11 +303,33 @@ const handleLogout = () => {
     }
   };
 
+  // Delete transaction execution
+  const confirmDelete = async () => {
+    if (!deleteModalItem) return;
+    const id = deleteModalItem._id;
+
+    try {
+      setDeletingId(id);
+      await axios.delete(
+        `${import.meta.env.VITE_APP_BACKENDEXP}/api/v2/bills/delete-bill/${id}`
+      );
+
+      setTransactions((prev) => prev.filter((item) => item._id !== id));
+      toast.success("Bill deleted successfully");
+    } catch (error) {
+      console.log(error);
+      toast.error(error?.response?.data?.message || "Failed to delete bill");
+    } finally {
+      setDeletingId(null);
+      setDeleteModalItem(null);
+    }
+  };
+
   return (
     <Layout title={`Dashboard - ${auth?.user?.name || "User"}`}>
-    <div className="min-h-screen bg-[#f4f6fb] text-slate-800 pb-44 sm:pb-32">
+    <div className="min-h-screen bg-[#f4f6fb] text-slate-800 pb-44 sm:pb-32 relative">
 
-      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-7 space-y-5">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 py-4 sm:py-7 space-y-4">
 
         {/* ================= HEADER ================= */}
 
@@ -448,18 +470,18 @@ const handleLogout = () => {
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
 
           {/* Credit */}
-          <div className="relative overflow-hidden bg-white border border-green-100 rounded-2xl p-3 sm:p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
-                <FaArrowDown />
+          <div className="relative overflow-hidden bg-white border border-green-100 rounded-2xl p-2.5 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                <FaArrowDown className="text-xs sm:text-base" />
               </div>
 
-              <p className="text-[10px] sm:text-sm font-bold text-slate-500">
+              <p className="text-[10px] sm:text-sm font-bold text-slate-500 truncate">
                 Credit
               </p>
             </div>
 
-            <h3 className="text-xs sm:text-xl font-black text-green-600 break-words">
+            <h3 className="text-[11px] sm:text-xl font-black text-green-600 break-all sm:break-words">
               {formatINR(totalCredit)}
             </h3>
 
@@ -469,18 +491,18 @@ const handleLogout = () => {
           </div>
 
           {/* Debit */}
-          <div className="relative overflow-hidden bg-white border border-red-100 rounded-2xl p-3 sm:p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                <FaArrowUp />
+          <div className="relative overflow-hidden bg-white border border-red-100 rounded-2xl p-2.5 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <FaArrowUp className="text-xs sm:text-base" />
               </div>
 
-              <p className="text-[10px] sm:text-sm font-bold text-slate-500">
+              <p className="text-[10px] sm:text-sm font-bold text-slate-500 truncate">
                 Debit
               </p>
             </div>
 
-            <h3 className="text-xs sm:text-xl font-black text-red-600 break-words">
+            <h3 className="text-[11px] sm:text-xl font-black text-red-600 break-all sm:break-words">
               {formatINR(totalDebit)}
             </h3>
 
@@ -490,18 +512,18 @@ const handleLogout = () => {
           </div>
 
           {/* Balance */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-3 sm:p-5 shadow-lg shadow-indigo-200 text-white">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/15 text-white flex items-center justify-center">
-                <FaWallet />
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-2.5 sm:p-5 shadow-lg shadow-indigo-200 text-white">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-white/15 text-white flex items-center justify-center shrink-0">
+                <FaWallet className="text-xs sm:text-base" />
               </div>
 
-              <p className="text-[10px] sm:text-sm font-bold text-indigo-100">
-                Closing Balance
+              <p className="text-[10px] sm:text-sm font-bold text-indigo-100 truncate">
+                Balance
               </p>
             </div>
 
-            <h3 className="text-xs sm:text-xl font-black break-words">
+            <h3 className="text-[11px] sm:text-xl font-black break-all sm:break-words">
               {formatINR(balance)}
             </h3>
 
@@ -547,7 +569,7 @@ const handleLogout = () => {
             <div className="mt-4 relative">
               <input
                 type="text"
-                placeholder="Search transactions by full title..."
+                placeholder="Search transactions by title..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all"
@@ -556,8 +578,8 @@ const handleLogout = () => {
 
           </div>
 
-          {/* Opening Balance - carried forward from previous month */}
-          <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 bg-blue-50 border-b border-blue-100">
+          {/* Opening Balance */}
+          <div className="flex items-center justify-between gap-3 px-3 sm:px-5 py-3 bg-blue-50 border-b border-blue-100">
             <div className="min-w-0">
               <p className="text-xs sm:text-sm font-black text-blue-800">
                 Opening Balance
@@ -566,23 +588,22 @@ const handleLogout = () => {
                 Previous month's closing balance
               </p>
             </div>
-            <p className="text-sm sm:text-base font-black text-blue-800 whitespace-nowrap">
+            <p className="text-xs sm:text-base font-black text-blue-800 whitespace-nowrap">
               {formatINR(openingBalance)}
             </p>
           </div>
 
           {/* Table Header - Desktop */}
-          <div className="hidden sm:grid grid-cols-[125px_minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)] gap-3 bg-slate-50 px-5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100">
-
+          <div className="hidden sm:grid grid-cols-[110px_minmax(0,2fr)_100px_100px_110px_90px] gap-3 bg-slate-50 px-5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100 items-center">
             <div>Date</div>
             <div>Transaction Details</div>
             <div className="text-right">Credit</div>
             <div className="text-right">Debit</div>
             <div className="text-right">Balance</div>
-
+            <div className="text-center">Action</div>
           </div>
 
-          {/* Complete Transaction List - No fixed height or internal scrollbar */}
+          {/* Complete Transaction List */}
           <div className="divide-y divide-slate-100">
 
             {loading ? (
@@ -614,7 +635,7 @@ const handleLogout = () => {
                 return (
                   <div
                     key={item._id || index}
-                    className={`transition-colors hover:bg-slate-50 ${
+                    className={`transition-colors hover:bg-slate-50 group relative ${
                       index === transactionsWithBalance.length - 1
                         ? "bg-indigo-50/40"
                         : "bg-white"
@@ -622,9 +643,9 @@ const handleLogout = () => {
                   >
 
                     {/* Desktop Row */}
-                    <div className="hidden sm:grid grid-cols-[125px_minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)] gap-3 items-start px-5 py-4">
+                    <div className="hidden sm:grid grid-cols-[110px_minmax(0,2fr)_100px_100px_110px_90px] gap-3 items-center px-5 py-4">
 
-                      <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-1">
+                      <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
                         <FaCalendarAlt className="text-slate-300 shrink-0" />
                         {formatDate(item.date)}
                       </div>
@@ -641,71 +662,86 @@ const handleLogout = () => {
                         )}
                       </div>
 
-                      <div className="text-right text-sm font-bold text-green-600 break-words pt-1">
+                      <div className="text-right text-sm font-bold text-green-600 break-words">
                         {credit > 0 ? formatINR(credit) : "-"}
                       </div>
 
-                      <div className="text-right text-sm font-bold text-red-600 break-words pt-1">
+                      <div className="text-right text-sm font-bold text-red-600 break-words">
                         {debit > 0 ? formatINR(debit) : "-"}
                       </div>
 
-                      <div className="text-right text-sm font-black text-slate-800 break-words pt-1">
+                      <div className="text-right text-sm font-black text-slate-800 break-words">
                         {formatINR(item.runningBalance)}
+                      </div>
+
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => setDeleteModalItem(item)}
+                          className="w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all opacity-60 group-hover:opacity-100"
+                          title="Delete Bill"
+                        >
+                          <FaTrashAlt className="text-xs" />
+                        </button>
                       </div>
 
                     </div>
 
-                    {/* Mobile Transaction Card */}
-                    <div className="sm:hidden p-4">
+                    {/* Mobile Clean Card Layout */}
+                    <div className="sm:hidden px-3 py-3 w-full">
+                      {index === 0 && (
+                        <div className="grid grid-cols-[60px_1fr_60px_60px_35px] gap-1 pb-2 mb-2 border-b border-slate-200 text-[9px] font-black uppercase tracking-wider text-slate-400">
+                          <span>Date</span>
+                          <span>Details</span>
+                          <span className="text-right">In/Out</span>
+                          <span className="text-right">Bal</span>
+                          <span className="text-center">Del</span>
+                        </div>
+                      )}
 
-                      <div className="flex justify-between items-start gap-3">
+                      <div className="grid grid-cols-[60px_1fr_60px_60px_35px] gap-1 items-center">
+                        <div className="text-[9px] font-semibold text-slate-500 leading-tight">
+                          {formatDate(item.date)}
+                        </div>
 
-                        <div className="min-w-0 flex-1">
-
-                          <div className="flex items-center flex-wrap gap-2 mb-2">
-                            <span className="text-[10px] font-bold text-slate-400">
-                              {formatDate(item.date)}
+                        <div className="min-w-0 pr-1">
+                          <p className="text-[11px] font-bold text-slate-800 truncate leading-tight">
+                            {item.title || "Untitled"}
+                          </p>
+                          {index === transactionsWithBalance.length - 1 && (
+                            <span className="inline-block text-[8px] font-black uppercase text-indigo-600 mt-0.5">
+                              Latest
                             </span>
-
-                            {index === transactionsWithBalance.length - 1 && (
-                              <span className="text-[9px] font-black uppercase bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md">
-                                Latest
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-sm font-bold text-slate-800 whitespace-normal break-words leading-relaxed">
-                            {item.title || "Untitled Transaction"}
-                          </p>
-
+                          )}
                         </div>
 
-                        <div className="shrink-0 text-right">
-                          <p className={`text-sm font-black ${
-                            credit > 0 ? "text-green-600" : "text-red-600"
-                          }`}>
-                            {credit > 0
-                              ? `+${formatINR(credit)}`
-                              : `-${formatINR(debit)}`}
-                          </p>
-
-                          <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">
-                            {credit > 0 ? "Credit" : "Debit"}
-                          </span>
+                        <div className="text-right">
+                          {credit > 0 ? (
+                            <span className="text-[10px] font-bold text-green-600 block truncate">
+                              +{credit}
+                            </span>
+                          ) : debit > 0 ? (
+                            <span className="text-[10px] font-bold text-red-600 block truncate">
+                              -{debit}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">-</span>
+                          )}
                         </div>
 
+                        <div className="text-right text-[10px] font-black text-slate-800 truncate">
+                          {Math.round(item.runningBalance)}
+                        </div>
+
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => setDeleteModalItem(item)}
+                            className="w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all"
+                            title="Delete"
+                          >
+                            <FaTrashAlt className="text-[10px]" />
+                          </button>
+                        </div>
                       </div>
-
-                      <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
-                        <span className="text-[10px] font-semibold text-slate-400">
-                          Running Balance
-                        </span>
-
-                        <span className="text-xs font-black text-slate-700">
-                          {formatINR(item.runningBalance)}
-                        </span>
-                      </div>
-
                     </div>
 
                   </div>
@@ -722,7 +758,7 @@ const handleLogout = () => {
                 Closing Balance
               </span>
 
-              <span className="text-sm font-black text-indigo-700">
+              <span className="text-xs sm:text-sm font-black text-indigo-700">
                 {formatINR(balance)}
               </span>
             </div>
@@ -732,23 +768,70 @@ const handleLogout = () => {
 
       </div>
 
+      {/* ================= DELETE CONFIRMATION POPUP MODAL ================= */}
+      {deleteModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 text-center space-y-4 transform transition-all scale-100">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto text-xl shadow-inner">
+              <FaExclamationTriangle />
+            </div>
+
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900">
+                Delete Transaction?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 px-2 break-words">
+                Are you sure you want to delete <span className="font-bold text-slate-800">"{deleteModalItem.title}"</span>? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteModalItem(null)}
+                disabled={deletingId === deleteModalItem._id}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold transition"
+              >
+                Cancel
+              </button>
+              
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deletingId === deleteModalItem._id}
+                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold shadow-lg shadow-red-200 transition flex items-center justify-center gap-2"
+              >
+                {deletingId === deleteModalItem._id ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= FIXED BOTTOM COMPOSER ================= */}
 
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 shadow-[0_-8px_30px_rgba(15,23,42,0.08)]">
 
         <form
           onSubmit={handleSubmit}
-          className="max-w-6xl mx-auto p-3 sm:p-4"
+          className="max-w-6xl mx-auto p-2.5 sm:p-4"
         >
 
           {/* Composer Header */}
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <FaPaperPlane className="text-xs" />
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <FaPaperPlane className="text-[10px]" />
               </div>
 
-              <span className="text-xs sm:text-sm font-black text-slate-800">
+              <span className="text-xs font-black text-slate-800">
                 New Transaction
               </span>
             </div>
@@ -814,10 +897,10 @@ const handleLogout = () => {
               onChange={handleChange}
               placeholder="Type transaction title..."
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-sm font-semibold outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50"
             />
 
-            <div className="grid grid-cols-[1fr_1fr_48px] gap-2">
+            <div className="grid grid-cols-[1fr_1fr_42px] gap-2">
 
               <input
                 type="number"
@@ -827,7 +910,7 @@ const handleLogout = () => {
                 placeholder="Credit ₹"
                 min="0"
                 step="0.01"
-                className="min-w-0 w-full bg-green-50 border border-green-200 rounded-xl px-2.5 py-3 text-sm font-bold text-green-700 outline-none focus:border-green-500"
+                className="min-w-0 w-full bg-green-50 border border-green-200 rounded-xl px-2.5 py-2.5 text-xs font-bold text-green-700 outline-none focus:border-green-500"
               />
 
               <input
@@ -838,19 +921,19 @@ const handleLogout = () => {
                 placeholder="Debit ₹"
                 min="0"
                 step="0.01"
-                className="min-w-0 w-full bg-red-50 border border-red-200 rounded-xl px-2.5 py-3 text-sm font-bold text-red-600 outline-none focus:border-red-500"
+                className="min-w-0 w-full bg-red-50 border border-red-200 rounded-xl px-2.5 py-2.5 text-xs font-bold text-red-600 outline-none focus:border-red-500"
               />
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-12 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-lg shadow-indigo-200 transition disabled:opacity-50"
+                className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-200 transition disabled:opacity-50"
                 title="Add Transaction"
               >
                 {submitting ? (
-                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <FaPaperPlane className="text-sm" />
+                  <FaPaperPlane className="text-xs" />
                 )}
               </button>
 

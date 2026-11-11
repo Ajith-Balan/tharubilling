@@ -143,6 +143,8 @@ const Allsites = () => {
       email: site.email || "",
       password: site.password || "",
       sitename: site.sitename || "",
+      state: site.state || "",
+      district: site.district || "",
     });
   };
 
@@ -711,9 +713,7 @@ const Allsites = () => {
                   Edit Site
                 </h2>
 
-                <p className="text-xs text-blue-100">
-                  Update site information and credentials
-                </p>
+                
               </div>
 
               <button
@@ -758,8 +758,18 @@ const Allsites = () => {
                 },
                 {
                   name: "sitename",
-                  label: "Location",
-                  placeholder: "Enter location",
+                  label: "Site Name",
+                  placeholder: "Enter site name",
+                },
+                 {
+                  name: "state",
+                  label: "State",
+                  placeholder: "Enter state",
+                },
+                 {
+                  name: "district",
+                  label: "District",
+                  placeholder: "Enter district",
                 },
               ].map((field) => (
 
