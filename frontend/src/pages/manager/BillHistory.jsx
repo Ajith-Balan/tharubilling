@@ -345,7 +345,6 @@ return contracts.sort((a, b) =>
     { numeric: true }
   )
 );
-
 }, [
   contractsMap,
   bills,
@@ -895,7 +894,7 @@ const getPendingBillStatus = (bills, statusFilter) => {
                       </div>
                     </div>
 
-                 {statusFilter === 'PENDING' && contractBills.length === 0 ? (() => {
+                 {(statusFilter === 'PENDING' || statusFilter === 'All') && contractBills.length === 0 ? (() => {
   const startDate = currentContract?.startdate;
 
   let pendingBills = 0;
