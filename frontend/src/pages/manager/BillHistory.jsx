@@ -390,29 +390,31 @@ return contracts.sort((a, b) =>
         }
         return val;
       };
-
+     
       const exportRows = sortedBillsForExport.map((bill) => {
+         const currentContract = contractsMap[bill.fileno] || {};
         const gross = Number(bill.netamount || 0);
         const penalty = Number(bill.penalty || 0);
 
         return {
           "File No": bill.fileno,
-          "Bill No": bill.billno,
+          "Work Name": `${currentContract.workname || ""} - ${currentContract.division || ""}`,
+          "Bill No": bill.billno || "",
           "E-Invoice Date": formatIfDate(bill.einvoicedate, "date"),
           "Bill From": formatIfDate(bill.billfrom, "date"),
           "Bill To": formatIfDate(bill.billto, "date"),
-          "Net Amount": Number(bill.netamount),
-          "GST": Number(bill.gst),
-          "Total Amount": Number(bill.totalamount),
-          "Amount Passed": Number(bill.amountpssd),
+          "Net Amount": Number(bill.netamount || ""),
+          "GST": Number(bill.gst || ""),
+          "Total Amount": Number(bill.totalamount || ""),
+          "Amount Passed": Number(bill.amountpssd || ""),
           "Passed Date": formatIfDate(bill.billpassdt, "date"),
-          "TDS": Number(bill.tds),
-          "GST TDS": Number(bill.gsttds),
-          "CC": Number(bill.cc),
-          "SD": Number(bill.sd),
-          "ESI/PF Penalty": Number(bill.esi_pfpenalty),
-          "Penalty": Number(bill.penalty),
-          "Others": Number(bill.others),
+          "TDS": Number(bill.tds || ""),
+          "GST TDS": Number(bill.gsttds || ""),
+          "CC": Number(bill.cc || ""),
+          "SD": Number(bill.sd || ""),
+          "ESI/PF Penalty": Number(bill.esi_pfpenalty || ""),
+          "Penalty": Number(bill.penalty || ""),
+          "Others": Number(bill.others || ""),
           "Status": bill.status,
           "Penalty %": gross ? ((penalty / gross) * 100).toFixed(2) + "%" : "0%"
         };
@@ -845,6 +847,7 @@ const getPendingBillStatus = (bills, statusFilter) => {
               paginatedContracts.map((contract) => {
                 const fileno = contract.fileno;
                 const currentContract = contract || contractsMap[fileno] || {};
+
                 const contractBills = groupedBills[fileno] || [];
 
                 const contractTotals = contractBills.reduce((acc, bill) => {

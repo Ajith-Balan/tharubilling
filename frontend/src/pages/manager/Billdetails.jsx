@@ -330,9 +330,72 @@ const baseEdits = {
                   <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                     File No: <span className="font-medium text-slate-600">{contract.fileno || "Not Available"}</span>
                   </h1>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold uppercase bg-slate-100 text-slate-800 border border-slate-200">
-                    Status: {contract.status || "—"}
-                  </span>
+                 <div className="flex flex-wrap items-center gap-2 mt-2">
+
+  {/* Status - Always Visible */}
+{/* Dynamic Status */}
+{(() => {
+  const status = (contract.status || "").toLowerCase();
+
+  const statusStyle =
+    status === "active"
+      ? {
+          dot: "bg-green-500",
+          badge: "bg-green-50 text-green-700 border-green-200",
+        }
+      : status === "closed"
+      ? {
+          dot: "bg-red-500",
+          badge: "bg-red-50 text-red-700 border-red-200",
+        }
+      : status === "completed"
+      ? {
+          dot: "bg-blue-500",
+          badge: "bg-blue-50 text-blue-700 border-blue-200",
+        }
+      : {
+          dot: "bg-slate-400",
+          badge: "bg-slate-100 text-slate-700 border-slate-200",
+        };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border ${statusStyle.badge}`}
+    >
+      <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
+      {contract.status || "—"}
+    </span>
+  );
+})()}
+
+  {/* Owner */}
+  {contract.owner && (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+      <i className="ri-user-line"></i>
+      {contract.owner}
+    </span>
+  )}
+
+  {/* Manager Name */}
+  {contract.managername && (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+      <i className="ri-user-star-line"></i>
+      {contract.managername}
+    </span>
+  )}
+
+  {/* Manager Phone */}
+  {contract.managerphone && (
+    <a
+      href={`tel:${contract.managerphone}`}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100 transition-colors"
+    >
+      <i className="ri-phone-line"></i>
+      {contract.managerphone}
+    </a>
+  )}
+
+</div>
                 </div>
                 <h2 className="text-lg font-semibold text-rose-600 tracking-wide uppercase">
                   {contract.workname || "Contract Name Not Available"}

@@ -202,7 +202,21 @@ const [showPassword, setShowPassword] = useState(false);
                           <div className="bg-gradient-to-r from-blue-600 to-indigo-500 p-5">
                 <h2 className="text-2xl font-bold text-white">Manager Details</h2>
               </div>
+
+                          
+                        
+                    
+
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                   <div>
+                                     <label className={labelClass}>Sub- if any*</label>
+                  <select name="owner" value={formData.owner} onChange={handleChange} className={inputClass}>
+                    <option value="">Select</option>
+                    <option value="Sub">SUB</option>
+             
+                  </select>  
+                  </div> 
+
                                       <div>
                                         <label className={labelClass}>Manager Name</label>
                                        <input type="text" name="managername" value={formData.managername} onChange={handleChange} className={inputClass}  />
