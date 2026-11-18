@@ -544,9 +544,10 @@ exportContracts.forEach((contract) => {
       { width: 15 },  // Start
       { width: 15 },  // End
       { width: 15 },  // Extension
-      { width: 18 },  // Contract
+      { width: 18 },  // Contract value
+      { width: 18 },  // Extended value
       { width: 14 },  // Work Complete
-      { width: 18 },  // Maximum
+      { width: 18 },  // Maximum Penalty
       { width: 18 },  // Actual Penalty
       { width: 14 },  // % Penalty
       { width: 16 },  // Billed + unbilled
@@ -554,6 +555,8 @@ exportContracts.forEach((contract) => {
    
       { width: 16 },  // Status
       { width: 14 },  // Owner
+      { width: 17 },  // Manager name
+      { width: 17 },  // Manager phone
 
     ];
 
@@ -578,10 +581,10 @@ exportContracts.forEach((contract) => {
       "% Penalty",
       "Billed + Unbilled",
       "Balance to be Billed",
-    
       "Status",
       "Owner",
-     
+      "Manager Name",
+      "Manager Phone",
     ];
 
     const headerRow =
@@ -700,6 +703,8 @@ exportContracts.forEach((contract) => {
    
         contract.status || "",
         contract.owner || "",
+        contract.managername || "",
+        contract.managerphone || "",
    
       ]);
 
@@ -1960,6 +1965,15 @@ contractBills.forEach((bill, billIdx) => {
                     (bill) => bill.fileno === contract.fileno
                   );
                   const metrics = getContractBillingMetrics(contract, contractBills);
+                  const datePercentage = getDateCompletionPercentage(contract);
+
+                     const getDateColor = (pct) => {
+                              if (pct >= 100) return "bg-purple-600";
+                              if (pct >= 75) return "bg-red-500";
+                              if (pct >= 50) return "bg-orange-500";
+                              return "bg-indigo-600";
+                            };
+
 
                   let progressColor = "bg-green-500";
                   if (metrics.billableToDatePercentage >= 100) progressColor = "bg-purple-600";
@@ -2024,6 +2038,23 @@ contractBills.forEach((bill, billIdx) => {
                           </div>
                         </div>
 
+                            <div>
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span className="font-medium text-slate-500">
+                                      Timeline ({formatDate(contract.enddate)})
+                                    </span>
+                                    <span className="font-semibold text-slate-700">
+                                      {datePercentage}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full ${getDateColor(datePercentage)} transition-all duration-500`}
+                                      style={{ width: `${Math.min(100, datePercentage)}%` }}
+                                    />
+                                  </div>
+                                </div>
+
                         
                       </div>
 
@@ -2050,10 +2081,10 @@ contractBills.forEach((bill, billIdx) => {
                           </div>
                         )}
 
-                        <div className="flex justify-between items-center text-slate-500">
+                        {/* <div className="flex justify-between items-center text-slate-500">
                           <span>End Date:</span>
                           <span>{formatDate(contract.enddate)}</span>
-                        </div>
+                        </div> */}
 
                         {contract.extension && (
                           <div className="flex justify-between items-center text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
