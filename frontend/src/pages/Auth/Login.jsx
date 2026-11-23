@@ -50,7 +50,7 @@ const Login = () => {
 
         // Redirect after successful login
         const dashboardPath = 
-        res.data.user.role === 1 
+        res.data.user.role === 1 || res.data.user.role === 3 
                 ? "/dashboard/manager" 
                 : "/";
             navigate(location.state?.from || dashboardPath);

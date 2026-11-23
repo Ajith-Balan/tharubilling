@@ -25,7 +25,7 @@ const BillHistory = () => {
   const [sortBy, setSortBy] = useState("date-desc");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [contractTab, setContractTab] = useState("All");
+  const [contractTab, setContractTab] = useState("Active");
   const [editingBill, setEditingBill] = useState(null);
   const [editData, setEditData] = useState({});
   
@@ -959,7 +959,9 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                 <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold text-red-600">Penalty</th>
                                 <th className="px-2 py-2.5 border-r border-slate-200 text-right font-bold">Other Deductions</th>
                                 <th className="px-2 py-2 text-center font-bold">Status</th>
-                                <th className="px-2 py-2 text-center font-bold">Action</th>
+                                {auth.user.role !== 3 && (
+                                  <th className="px-2 py-2 text-center font-bold">Action</th>
+                                )}
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 font-mono text-slate-800">
@@ -1168,6 +1170,7 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                         </span>
                                       )}
                                     </td>
+                                    {auth.user.role !== 3 &&(
                                     <td className="px-2 py-2 text-center">
                                       {isEditing ? (
                                         <div className="flex justify-center gap-2">
@@ -1208,6 +1211,7 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                         </div>
                                       )}
                                     </td>
+                                    )}
                                   </tr>
                                 );
                               })}
@@ -1227,42 +1231,183 @@ const getPendingBillStatus = (bills, statusFilter) => {
                                 <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700">{formatCurrency(contractTotals.esi_pfpenalty)}</td>
                                 <td className="px-2 py-3 border-r border-slate-300 text-right text-red-700 bg-red-50/40">{formatCurrency(contractTotals.penalty)}</td>
                                 <td className="px-2 py-3 border-r border-slate-300 text-right text-slate-700">{formatCurrency(contractTotals.others)}</td>
-                                <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
-                                <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td>
+                                {/* <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td> */}
+                                {/* <td className="px-2 py-3 text-center text-slate-400 font-sans">-</td> */}
                               </tr>
                             </tfoot>
                           </table>
                         </div>
 
-                        {/* Mobile Card Layout */}
-                        <div className="block xl:hidden p-4 space-y-4 bg-slate-50/50">
-                          {contractBills.map((bill) => {
-                            const gross = Number(bill.totalamount) || 0;
-                            const penaltyAmt = Number(bill.penalty) || 0;
-                            const calculatedPercentage = gross > 0 ? ((penaltyAmt / gross) * 100).toFixed(1) : "0.0";
-                            const computedGst = Number(bill.gst || (gross * 0.18));
+                     
+{/* Mobile Excel-Style Single Row Bill Layout */}
+<div className="block xl:hidden bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
 
-                            return (
-                              <div key={bill._id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm font-sans text-xs">
-                                <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
-                                  <span className="font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded">Bill #{bill.billno || "N/A"}</span>
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${bill.status === "PASSED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{bill.status || "Processing"}</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 font-mono">
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">E-Invoice Date:</span><span>{formatDate(bill.einvoicedate)}</span></div>
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">Period Range:</span><span className="text-slate-700 text-[11px]">{formatDate(bill.billfrom)} to {formatDate(bill.billto)}</span></div>
-                                  <hr className="col-span-2 my-1 border-slate-100" />
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">Base Amount:</span><span className="font-semibold text-slate-800">₹ {formatCurrency(gross)}</span></div>
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">GST (18%):</span><span className="text-slate-700">₹ {formatCurrency(computedGst)}</span></div>
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">Gross Total:</span><span className="font-bold text-slate-900">₹ {formatCurrency(gross + computedGst)}</span></div>
-                                  <hr className="col-span-2 my-1 border-slate-100" />
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">Passed Date:</span><span className="text-slate-700">{formatDate(bill.billpassdt)}</span></div>
-                                  <div><span className="text-slate-400 font-sans text-[11px] block">Amount Passed:</span><span className="font-bold text-emerald-700">₹ {formatCurrency(bill.amountpssd || 0)}</span></div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+  {/* Header */}
+  <div className="bg-slate-900 px-4 py-3 flex items-center justify-between">
+    <div>
+      <h3 className="text-sm font-bold text-white tracking-wide">
+        CONTRACT BILL REGISTER
+      </h3>
+      <p className="text-[10px] text-slate-400 mt-0.5">
+        Financial Statement
+      </p>
+    </div>
+    <span className="text-xs font-bold text-white bg-white/10 px-2.5 py-1 rounded-md">
+      {contractBills.length} Bills
+    </span>
+  </div>
+
+  {/* Scrollable Excel Table */}
+  <div className="overflow-x-auto overscroll-x-contain">
+    <table className="w-full min-w-[1050px] border-collapse text-xs">
+
+      {/* Table Header */}
+      <thead>
+        <tr className="bg-slate-100 text-slate-600 border-b-2 border-slate-300">
+          <th className="sticky left-0 z-20 bg-slate-100 px-3 py-3 text-left font-bold border-r border-slate-300 w-[110px]">
+            Bill No.
+          </th>
+          <th className="px-3 py-3 text-left font-bold border-r border-slate-200 w-[115px]">
+            Status
+          </th>
+          <th className="px-3 py-3 text-left font-bold border-r border-slate-200 w-[120px]">
+            E-Invoice Date
+          </th>
+          <th className="px-3 py-3 text-left font-bold border-r border-slate-200 w-[110px]">
+            Period From
+          </th>
+          <th className="px-3 py-3 text-left font-bold border-r border-slate-200 w-[110px]">
+            Period To
+          </th>
+          <th className="px-3 py-3 text-right font-bold border-r border-slate-200 w-[130px]">
+            Base Amount
+          </th>
+          <th className="px-3 py-3 text-right font-bold border-r border-slate-200 w-[110px]">
+            GST (18%)
+          </th>
+          <th className="px-3 py-3 text-right font-bold border-r border-slate-200 w-[130px]">
+            Gross Total
+          </th>
+          <th className="px-3 py-3 text-left font-bold border-r border-slate-200 w-[115px]">
+            Passed Date
+          </th>
+          <th className="px-3 py-3 text-right font-bold w-[130px]">
+            Amount Passed
+          </th>
+        </tr>
+      </thead>
+
+      {/* Table Body */}
+      <tbody>
+        {contractBills.map((bill, index) => {
+          const gross = Number(bill.totalamount) || 0;
+          const computedGst = Number(bill.gst || gross * 0.18);
+
+          return (
+            <tr
+              key={bill._id}
+              className={`border-b border-slate-200 transition-colors hover:bg-indigo-50/60 ${
+                index % 2 === 0 ? "bg-white" : "bg-slate-50"
+              }`}
+            >
+              <td className={`sticky left-0 z-10 px-3 py-3 font-bold text-indigo-700 font-mono border-r border-slate-200 ${
+                index % 2 === 0 ? "bg-white" : "bg-slate-50"
+              }`}>
+                #{bill.billno || "N/A"}
+              </td>
+
+              <td className="px-3 py-3 border-r border-slate-200">
+                <span className={`inline-flex items-center gap-1.5 whitespace-nowrap font-bold text-[10px] uppercase ${
+                  bill.status === "PASSED"
+                    ? "text-emerald-700"
+                    : bill.status === "CANCELLED"
+                    ? "text-red-600"
+                    : "text-amber-600"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    bill.status === "PASSED"
+                      ? "bg-emerald-500"
+                      : bill.status === "CANCELLED"
+                      ? "bg-red-500"
+                      : "bg-amber-500"
+                  }`} />
+                  {bill.status || "Processing"}
+                </span>
+              </td>
+
+              <td className="px-3 py-3 whitespace-nowrap text-slate-600 font-mono border-r border-slate-200">
+                {formatDate(bill.einvoicedate)}
+              </td>
+
+              <td className="px-3 py-3 whitespace-nowrap text-slate-600 font-mono border-r border-slate-200">
+                {formatDate(bill.billfrom)}
+              </td>
+
+              <td className="px-3 py-3 whitespace-nowrap text-slate-600 font-mono border-r border-slate-200">
+                {formatDate(bill.billto)}
+              </td>
+
+              <td className="px-3 py-3 text-right whitespace-nowrap font-semibold text-slate-800 font-mono tabular-nums border-r border-slate-200">
+                ₹ {formatCurrency(gross)}
+              </td>
+
+              <td className="px-3 py-3 text-right whitespace-nowrap text-slate-600 font-mono tabular-nums border-r border-slate-200">
+                ₹ {formatCurrency(computedGst)}
+              </td>
+
+              <td className="px-3 py-3 text-right whitespace-nowrap font-bold text-indigo-700 font-mono tabular-nums border-r border-slate-200">
+                ₹ {formatCurrency(gross + computedGst)}
+              </td>
+
+              <td className="px-3 py-3 whitespace-nowrap text-slate-600 font-mono border-r border-slate-200">
+                {formatDate(bill.billpassdt)}
+              </td>
+
+              <td className="px-3 py-3 text-right whitespace-nowrap font-bold text-emerald-700 font-mono tabular-nums">
+                ₹ {formatCurrency(bill.amountpssd || 0)}
+              </td>
+            </tr>
+          );
+        })}
+
+        {contractBills.length === 0 && (
+          <tr>
+            <td colSpan={10} className="py-10 text-center text-slate-400">
+              No contract bills found
+            </td>
+          </tr>
+        )}
+      </tbody>
+
+      {/* Footer */}
+      {contractBills.length > 0 && (
+        <tfoot>
+          <tr className="bg-slate-100 border-t-2 border-slate-300">
+            <td colSpan={10} className="px-3 py-3 text-right">
+              <span className="text-[10px] uppercase font-bold text-slate-500">
+                Total Records: {contractBills.length}
+              </span>
+            </td>
+          </tr>
+        </tfoot>
+      )}
+
+    </table>
+  </div>
+
+  {/* Scroll Hint */}
+  <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-slate-200">
+    <span className="text-[10px] text-slate-400 font-medium">
+      Showing {contractBills.length} bill records
+    </span>
+    <span className="flex items-center gap-1 text-[10px] text-indigo-500 font-semibold">
+      <icon name="arrow-left-right" size="xs" />
+      Swipe to view all columns
+    </span>
+  </div>
+
+</div>
+
                       </>
                     )}
                   </div>

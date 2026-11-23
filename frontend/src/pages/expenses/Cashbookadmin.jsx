@@ -52,7 +52,7 @@ const Cashbookadmin = () => {
     title: "",
     credit: "",
     debit: "",
-    site: "",
+   
   });
 
   const [search, setSearch] = useState("");
@@ -143,7 +143,7 @@ const Cashbookadmin = () => {
 
       const payload = {
         fileno,
-        site: auth?.user?.sitename,
+        site: auth?.user?.sitename || "",
         email: auth?.user?.email || "",
         date: todayStr(), // Automatically tags today's date
         title: form.title.trim(),
@@ -325,7 +325,8 @@ const Cashbookadmin = () => {
         </div>
 
         {/* COMPACT MESSAGE COMPOSER FORM (No Date input needed) */}
-       {/*  <form
+        {auth.user.role !== 3 && (
+        <form
           onSubmit={handleSubmit}
           className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 sm:p-4 shadow-lg sm:relative sm:rounded-2xl sm:shadow-sm"
         >
@@ -372,7 +373,8 @@ const Cashbookadmin = () => {
               <span className="hidden sm:inline text-xs">Add</span>
             </button>
           </div>
-        </form> */}
+        </form>
+         )}
 
       </div>
     </div>

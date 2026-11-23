@@ -130,30 +130,30 @@ export const loginController = async (req, res) => {
 
 
 
-  export const getoneSupervisor = async (req, res) => {
+  export const getUsers = async (req, res) => {
     try {
       // Extract `id` from request parameters
   
       // Find one user with role 2 for the given type
-      const supervisor = await userModel.find();
+      const Users = await userModel.find();
   
-      if (!supervisor) {
+      if (!Users) {
         return res.status(404).send({
           success: false,
-          message: 'Manager not found for the given type',
+          message: 'Users not found',
         });
       }
   
       // Respond with the manager data
       res.status(200).send({
         success: true,
-        supervisor,
+        Users,
       });
     } catch (error) {
       console.error(error);
       res.status(500).send({
         success: false,
-        message: 'An error occurred while fetching the manager',
+        message: 'An error occurred while fetching the users',
         error: error.message,
       });
     }
@@ -163,14 +163,12 @@ export const loginController = async (req, res) => {
   export const updateProfile = async (req, res) => {
     try {
     
-
-
-
-      const { name, email, phone, password } = req.body;
+      const { id } = req.params;
+      const { name, email, password,role } = req.body;
   
       // Find the user by ID
     
-      const user = await userModel.findById(req.user._id);
+      const user = await userModel.findById(id);
 
       if (!user) {
         return res.status(404).send({
@@ -183,7 +181,7 @@ export const loginController = async (req, res) => {
       const updatedData = {
         name: name || user.name,
         email: email || user.email,
-        phone: phone || user.phone,
+        role: role || user.role,
   
       };
   
@@ -193,7 +191,7 @@ export const loginController = async (req, res) => {
       }
   
       // Update the user's profile
-      const updatedUser = await userModel.findByIdAndUpdate(req.user._id, updatedData, { new: true });
+      const updatedUser = await userModel.findByIdAndUpdate(user._id, updatedData, { new: true });
   
       res.status(200).send({
         success: true,
@@ -218,18 +216,16 @@ export const loginController = async (req, res) => {
 
 export const updatePassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-
+      const { id } = req.params; 
+    const {  password } = req.body;
     // Validate inputs
-    if (!email) {
-      return res.status(400).send({ message: "Email is required" });
-    }
-    if (!newPassword) {
+  
+    if (!password) {
       return res.status(400).send({ message: "New password is required" });
     }
 
     // Find the user by email
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findById(id);
     if (!user) {
       return res.status(404).send({
         success: false,
@@ -238,8 +234,8 @@ export const updatePassword = async (req, res) => {
     }
 
     // Hash the new password and update the user
-    const hashed = await hashPassword(newPassword);
-    await userModel.updateOne({ email }, { $set: { password: hashed } });
+    const hashed = await hashPassword(password);
+    await userModel.updateOne({ _id: user._id }, { $set: { password: hashed } });
 
     // Send success response
     res.status(200).send({
@@ -367,6 +363,23 @@ export async function getManagers(req,res) {
 
 
 
-
+export async function deleteUser(req,res) {
+  try {
+    const { id } = req.params;
+    await userModel.findByIdAndDelete(id);
+    res.status(200).send({
+      success:true,
+      message:"Deleted User",
+    })
+  } catch (error) {
+    res.status(500).send({
+      success:false,
+      error,
+      message: "error in deleting user "
+    })
+  
+    
+  }
+}
 
 

@@ -8,10 +8,11 @@ import {
   Forget,
   verifyotp,
   updatePassword,
-  getoneSupervisor,
   getManagers,
+  getUsers,
+  deleteUser,
 } from '../controllers/authcontroller.js';
-import {   isManager,  isSiteManager, isSuperAdmin, requireSignIn } from '../middlewares/authmiddleware.js';
+import {   isAdmin, isManager,  requireSignIn } from '../middlewares/authmiddleware.js';
 
 const router = express.Router();
 
@@ -24,9 +25,11 @@ router.post('/login', loginController);
 // Test route for admin access, protected by sign-in and admin check
 router.get('/test', requireSignIn,  testController);
 
-router.get('/getsupervisor',   getoneSupervisor);
+router.get('/getusers',   getUsers);
 
 router.get('/getmanager',   getManagers);
+
+
 
 
 
@@ -41,24 +44,26 @@ router.get('/adminauth', requireSignIn, isManager, (req, res) => {
 
 });
 
-router.get('/managerauth', requireSignIn,  isManager, (req, res) => {
+
+router.get('/viewauth', requireSignIn,  isAdmin, (req, res) => {
   res.status(200).send({ ok: true });
 });
 
-// Admin Access
-router.get('/adminauthh', requireSignIn,  isSuperAdmin, (req, res) => {
-  res.status(200).send({ ok: true });
-});
+// // Admin Access
+// router.get('/adminauthh', requireSignIn,  isSuperAdmin, (req, res) => {
+//   res.status(200).send({ ok: true });
+// });
 
-router.get('/managerauthh', requireSignIn,  isSiteManager, (req, res) => {
-  res.status(200).send({ ok: true });
-});
+// router.get('/managerauthh', requireSignIn,  isSiteManager, (req, res) => {
+//   res.status(200).send({ ok: true });
+// });
 
 
 
-router.put('/profile', requireSignIn, updateProfile)
+router.put('/profile/:id', requireSignIn, updateProfile)
 
-router.post('/resetpassword',  updatePassword)
+router.put('/resetpassword/:id',  updatePassword)
+router.delete('/deleteuser/:id',  deleteUser)
 
 
 

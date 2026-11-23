@@ -260,7 +260,10 @@ useEffect(() => {
     navigate("/dashboard/user");
     } else if (auth?.user?.role === 2) {
     navigate("/dashboard/exp");
-    }
+    }else if (auth?.user?.role === 3) {
+    navigate("/dashboard/manager");
+     }
+  
   
   // Remove the 'else' block that navigates to "/"
 }, [auth?.user?.role, navigate]); // Only run when role changes

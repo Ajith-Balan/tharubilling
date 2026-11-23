@@ -61,6 +61,8 @@ const Header = () => {
       ? "/dashboard/user"
       : auth?.user?.role === 2
       ? "/dashboard/exp"
+      : auth?.user?.role === 3
+      ? "/dashboard/manager"
       : "/"
   }
   className="text-gray-800 text-sm"

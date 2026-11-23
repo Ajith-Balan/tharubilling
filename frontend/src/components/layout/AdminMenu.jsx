@@ -1,33 +1,31 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/Auth";
 import { toast } from "react-toastify";
-import axios from "axios";
+
 import {
   FaHome,
   FaFileInvoiceDollar,
-  FaUserPlus,
   FaClipboardList,
   FaUsers,
   FaChartLine,
   FaUserTie,
-  FaBroadcastTower,
   FaCheckCircle,
-  FaTrain,
   FaSignOutAlt,
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-import { BsChatText } from "react-icons/bs";
+
 import { IoSparkles } from "react-icons/io5";
 
 const ManagerMenu = () => {
   const [auth, setAuth] = useAuth();
   const navigate = useNavigate();
 
-  const [chats, setChats] = useState([]);
-  const [todayCount, setTodayCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const role = auth?.user?.role;
 
   const handleLogout = () => {
     setAuth({ ...auth, user: null, token: "" });
@@ -36,61 +34,95 @@ const ManagerMenu = () => {
     setTimeout(() => navigate("/"), 1000);
   };
 
-  // Fetch chats
-  const fetchChats = async () => {
-    try {
-      const res = await axios.get(
-        `${import.meta.env.VITE_APP_BACKEND}/api/v1/chat/getchats`
-      );
-      let allChats = res.data.chats || res.data.chat || [];
-      allChats = allChats.sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-      );
-
-      const today = new Date().toISOString().split("T")[0];
-      const todayChats = allChats.filter(
-        (chat) =>
-          new Date(chat.createdAt).toISOString().split("T")[0] === today &&
-          chat.user !== auth?.user?.name
-      );
-      setTodayCount(todayChats.length);
-      setChats(allChats);
-    } catch (err) {
-      console.error("Error fetching chats:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchChats();
-  }, []);
-
   const menuItems = [
-    { to: "/dashboard/manager", label: "Home", icon: <FaHome className="text-orange-600" /> },
+    {
+      to: "/dashboard/manager",
+      label: "Home",
+      icon: <FaHome className="text-orange-600" />,
+    },
+    {
+      to: "/dashboard/manager/contracts",
+      label: "Contracts",
+      icon: <FaClipboardList className="text-violet-600" />,
+    },
 
-    { to: "/dashboard/manager/contracts", label: "Contracts", icon: <FaClipboardList className="text-violet-600" /> },
-    { to: "/dashboard/manager/createcontracts", label: "Create Contract", icon: <FaUserTie className="text-yellow-600" /> },
-     { to: "/dashboard/manager/billdetails", label: "All Bills", icon: <FaFileInvoiceDollar  className="text-blue-600"  /> },
-     { to: "/dashboard/manager/addbills", label: "Add Bill", icon: <FaFileInvoiceDollar className="text-green-600" /> },
+    // Hide Create Contract for role 3
+    ...(role !== 3
+      ? [
+          {
+            to: "/dashboard/manager/createcontracts",
+            label: "Create Contract",
+            icon: <FaUserTie className="text-yellow-600" />,
+          },
+        ]
+      : []),
 
-{ to: "/dashboard/manager/allsites", label: ( <span className="flex items-center justify-between w-full gap-2"><span>Expenses</span><span className="flex items-center gap-1 text-[10px] font-bold text-purple-600"> <IoSparkles className="text-yellow-400 animate-spin" /> NEW  </span> </span>), icon: <FaFileInvoiceDollar className="text-red-500" /> }, 
- { to: "/dashboard/manager/penalty", label: "Penalty Sheet", icon: <FaCheckCircle className="text-green-800" /> },
-        { to: "/dashboard/manager/profitability", label: "Profitability", icon: <FaChartLine className="text-pink-600" /> },
+    {
+      to: "/dashboard/manager/billdetails",
+      label: "All Bills",
+      icon: <FaFileInvoiceDollar className="text-blue-600" />,
+    },
 
+    // Hide Add Bill for role 3
+    ...(role !== 3
+      ? [
+          {
+            to: "/dashboard/manager/addbills",
+            label: "Add Bill",
+            icon: <FaFileInvoiceDollar className="text-green-600" />,
+          },
+        ]
+      : []),
+
+    {
+      to: "/dashboard/manager/allsites",
+      label: (
+        <span className="flex items-center justify-between w-full gap-2">
+          <span>Expenses</span>
+          <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
+            <IoSparkles className="text-yellow-400 animate-spin" />
+            NEW
+          </span>
+        </span>
+      ),
+      icon: <FaFileInvoiceDollar className="text-red-500" />,
+    },
+
+    {
+      to: "/dashboard/manager/penalty",
+      label: "Penalty Sheet",
+      icon: <FaCheckCircle className="text-green-800" />,
+    },
+    {
+      to: "/dashboard/manager/profitability",
+      label: "Profitability",
+      icon: <FaChartLine className="text-pink-600" />,
+    },
+     ...(role !== 3
+      ? [
+    {
+      to: "/dashboard/manager/users",
+      label: "Users",
+      icon: <FaUsers className="text-blue-600" />,
+    }
+  ]
+     : []),
      
-
-  ];
+  ]
 
   return (
     <>
-      {/* 🔹 Mobile Menu Button */}
+      {/* Mobile Header */}
       <div className="md:hidden flex justify-between items-center bg-white shadow p-4">
-  <Link to="/" className="flex items-center space-x-2">
-            <img
-              className="h-10 sm:h-12 w-auto rounded-md"
-              src="https://www.tharuandsons.in/wp-content/uploads/2023/04/logo-tagline-2.jpg"
-              alt="Tharu & Sons Logo"
-            />
-          </Link>        <button
+        <Link to="/" className="flex items-center space-x-2">
+          <img
+            className="h-10 sm:h-12 w-auto rounded-md"
+            src="https://www.tharuandsons.in/wp-content/uploads/2023/04/logo-tagline-2.jpg"
+            alt="Tharu & Sons Logo"
+          />
+        </Link>
+
+        <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="text-2xl text-red-600 focus:outline-none"
         >
@@ -98,38 +130,38 @@ const ManagerMenu = () => {
         </button>
       </div>
 
-      {/* 🔹 Sidebar (Desktop + Tablet) */}
+      {/* Sidebar */}
       <aside
-        className={`bg-white shadow-lg rounded-2xl p-6 fixed md:static top-0 left-0 h-full w-64 z-50 transform 
-        transition-transform duration-300 ease-in-out 
-        ${menuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+        className={`bg-white shadow-lg rounded-2xl p-6 fixed md:static top-0 left-0 h-full w-64 z-50 transform
+        transition-transform duration-300 ease-in-out
+        ${
+          menuOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0"
+        }`}
       >
-        <h2 className="text-2xl font-bold text-red-600 mb-6 border-b pb-2 md:block hidden">
-         
+        <h2 className="text-2xl font-bold text-red-600 mb-6 border-b pb-2 hidden md:block">
+          Manager Panel
         </h2>
 
         <nav className="space-y-3 mt-4">
           {menuItems.map((item, index) => (
             <Link
-              key={index}
+              key={item.to}
               to={item.to}
-              onClick={() => setMenuOpen(false)} // Close menu on mobile tap
+              onClick={() => setMenuOpen(false)}
               className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{item.icon}</span>
-                <span className="text-sm font-medium">{item.label}</span>
-              </div>
-
-              {item.label === "Connect" && todayCount > 0 && (
-                <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {todayCount}
+                <span className="text-sm font-medium">
+                  {item.label}
                 </span>
-              )}
+              </div>
             </Link>
           ))}
 
-          {/* Logout Button */}
+          {/* Logout */}
           <button
             onClick={() => {
               handleLogout();
@@ -143,12 +175,12 @@ const ManagerMenu = () => {
         </nav>
       </aside>
 
-      {/* 🔹 Background Overlay (when mobile menu is open) */}
+      {/* Mobile Overlay */}
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-40 z-40 md:hidden"
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
           onClick={() => setMenuOpen(false)}
-        ></div>
+        />
       )}
     </>
   );

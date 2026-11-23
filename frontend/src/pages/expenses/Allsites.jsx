@@ -25,6 +25,7 @@ import {
   FaExclamationTriangle,
   FaPhoneAlt,
 } from "react-icons/fa";
+import { useAuth } from "../../context/Auth";
 
 const API = import.meta.env.VITE_APP_BACKENDEXP;
 
@@ -44,6 +45,7 @@ const formatDate = (date) => {
 
 const Allsites = () => {
   const [sites, setSites] = useState([]);
+  const [auth] = useAuth();
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -308,17 +310,18 @@ const Allsites = () => {
                 Refresh
               </span>
             </button>
+            {auth.user.role !== 3 && (
+              <Link
+                to="/dashboard/manager/addexpmanager"
+                className="flex items-center gap-2 rounded-xl border border-blue-600 bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-600 shadow-sm transition hover:bg-blue-100"
+              >
+                <FaPlus size={12} />
 
-            <Link
-              to="/dashboard/manager/addexpmanager"
-              className="flex items-center gap-2 rounded-xl border border-blue-600 bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-600 shadow-sm transition hover:bg-blue-100"
-            >
-              <FaPlus size={12} />
-
-              <span className="hidden sm:inline">
-                Add Site
-              </span>
-            </Link>
+                <span className="hidden sm:inline">
+                  Add Site
+                </span>
+              </Link>
+            )}
 
           </div>
 
@@ -487,8 +490,8 @@ const Allsites = () => {
                   </div>
 
                   {/* EDIT / DELETE */}
-
-                  <div className="mt-2 flex items-center gap-2">
+                  {auth.user.role !== 3 && (
+                    <div className="mt-2 flex items-center gap-2">
 
                     <button
                       type="button"
@@ -509,7 +512,7 @@ const Allsites = () => {
                     </button>
 
                   </div>
-
+                  )}
                   {/* EMAIL */}
 
                   <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 transition hover:bg-blue-50">
@@ -593,6 +596,11 @@ const Allsites = () => {
 
                     </div>
 
+
+                    {auth.user.role !== 3 && (
+                    <div>
+
+                  
                     <button
                       type="button"
                       disabled={!site.password}
@@ -626,7 +634,8 @@ const Allsites = () => {
                         <FaCopy size={12} />
                       )}
                     </button>
-
+                </div>
+                    )}
                   </div>
 
                   {/* LOCATION AND DATE */}

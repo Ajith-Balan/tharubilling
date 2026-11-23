@@ -404,23 +404,25 @@ const baseEdits = {
                   <span className="font-semibold text-slate-900">Name of the Work:</span> {contract.nameofthework || "—"}
                 </p>
               </div>
+            {auth.user.role !== 3 && (
+  <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
+    <Link
+      to={`/dashboard/manager/addbills/${contract.fileno}`}
+      className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-150"
+    >
+      <FaPlus size={14} />
+      <span>Add New Bill Entry</span>
+    </Link>
 
-              <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
-                <Link
-                  to={`/dashboard/manager/addbills/${contract.fileno}`}
-                  className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-150"
-                >
-                  <FaPlus size={14} /> 
-                  <span>Add New Bill Entry</span>
-                </Link>
-                <Link
-                  to={`/dashboard/manager/editcon/${contract._id}`}
-                  className="inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm px-4 py-2.5 rounded-lg border border-slate-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors duration-150"
-                >
-                  <FaEdit size={14} className="text-slate-500" /> 
-                  <span>Edit Contract</span>
-                </Link>
-              </div>
+    <Link
+      to={`/dashboard/manager/editcon/${contract._id}`}
+      className="inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm px-4 py-2.5 rounded-lg border border-slate-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors duration-150"
+    >
+      <FaEdit size={14} className="text-slate-500" />
+      <span>Edit Contract</span>
+    </Link>
+  </div>
+)}
             </div>
 
             {/* METADATA LEDGER GRID */}
@@ -630,7 +632,8 @@ const baseEdits = {
                       <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Passed Date</th>
                       <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center text-red-700">Balance</th>
                       <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-r border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center">Status</th>
-                      <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center min-w-[100px]">Actions</th>
+                      {auth.user.role !== 3 &&(  <th className="sticky top-0 z-20 bg-slate-100 px-3 py-3 border-b border-slate-300 shadow-[0_1px_0_0_rgba(226,232,240,1)] text-center min-w-[100px]">Actions</th>)}
+                    
                     </tr>
                   </thead>
 
@@ -923,6 +926,7 @@ const baseEdits = {
                           </td>
 
                           {/* Action Buttons */}
+                          {auth.user.role !== 3 && (
                           <td className="px-2 py-3 text-center font-sans">
                             <div className="flex justify-center items-center gap-2">
                               {isEditing ? (
@@ -942,6 +946,7 @@ const baseEdits = {
                               </Link>
                             </div>
                           </td>
+                           )}
                         </tr>
                       );
                     })}
@@ -964,53 +969,189 @@ const baseEdits = {
                 </table>
               </div>
 
-              {/* Responsive Card Layout for Mobile Screens */}
-              <div className="block xl:hidden space-y-4">
-                {filteredBills.map((bill) => (
-                  <div key={bill._id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm font-sans">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-3">
-                      <div>
-                        <span className="text-xs font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-1 rounded">
-                          Bill #{bill.billno || "N/A"}
-                        </span>
-                        <span className="text-xs text-slate-400 font-medium ml-2 font-mono">{formatDate(bill.einvoicedate)}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {editId === bill._id ? (
-                          <>
-                            <button onClick={() => handleSaveClick(bill._id)} className="text-emerald-600 p-1"><FaSave size={16} /></button>
-                            <button onClick={handleCancelEdit} className="text-slate-400 p-1"><FaTimes size={16} /></button>
-                          </>
-                        ) : (
-                          <button onClick={() => handleEditClick(bill)} className="text-blue-600 p-1"><FaEdit size={16} /></button>
-                        )}
-                        <button onClick={() => handleDelete(bill._id)} className="text-slate-400 hover:text-red-600 p-1"><FaTrash size={16} /></button>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs font-mono">
-                      <div>
-                        <span className="text-slate-400 font-sans block">Gross Amount:</span>
-                        <span className="font-bold text-slate-800">₹ {formatCurrency(getBillValue(bill, "totalamount"))}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-sans block">Net Collection:</span>
-                        <span className="font-bold text-emerald-600">₹ {formatCurrency(getBillValue(bill, "netamount"))}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-sans block">Deducted Penalty:</span>
-                        <span className="font-bold text-red-600">₹ {formatCurrency(getBillValue(bill, "penalty"))}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-sans block">Processing Status:</span>
-                        <span className={`font-sans font-bold ${bill.status === "CANCELLED" ? "text-red-600" : "text-indigo-600"}`}>
-                          {bill.status || "Processing"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+{/* Mobile Excel-Style Single Row Bill Register */}
+<div className="block xl:hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+
+  {/* Header */}
+  <div className="bg-slate-900 px-4 py-3 flex justify-between items-center">
+    <div>
+      <h3 className="text-sm font-bold text-white tracking-wide">
+        BILL REGISTER
+      </h3>
+      <p className="text-[10px] text-slate-400 mt-1">
+        Financial Statement • All Transactions
+      </p>
+    </div>
+
+    <span className="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1.5 rounded-md">
+      {filteredBills.length} Records
+    </span>
+  </div>
+
+  {/* Excel Table */}
+  <div className="overflow-x-auto overscroll-x-contain">
+    <table className="w-full min-w-[950px] border-collapse text-xs">
+
+      <thead>
+        <tr className="bg-slate-100 text-slate-600 border-b-2 border-slate-300">
+
+          <th className="sticky left-0 z-20 bg-slate-100 px-3 py-3 text-left border-r border-slate-300 w-[100px]">
+            Bill No.
+          </th>
+
+          <th className="px-3 py-3 text-left border-r border-slate-200 w-[105px]">
+            Date
+          </th>
+
+          <th className="px-3 py-3 text-left border-r border-slate-200 w-[110px]">
+            Status
+          </th>
+
+          <th className="px-3 py-3 text-right border-r border-slate-200 w-[140px]">
+            Gross Amount
+          </th>
+
+          <th className="px-3 py-3 text-right border-r border-slate-200 w-[140px]">
+            Net Collection
+          </th>
+
+          <th className="px-3 py-3 text-right border-r border-slate-200 w-[130px]">
+            Penalty
+          </th>
+        
+
+        
+          {auth.user.role !== 3 && (
+          <th className="px-3 py-3 text-center w-[100px]">
+            Actions
+          </th>
+          )}
+        </tr>
+      </thead>
+
+      <tbody>
+        {filteredBills.map((bill, index) => (
+          <tr
+            key={bill._id}
+            className={`border-b border-slate-200 hover:bg-indigo-50/60 transition-colors ${
+              index % 2 === 0 ? "bg-white" : "bg-slate-50"
+            }`}
+          >
+
+            {/* Bill Number - Sticky */}
+            <td className={`sticky left-0 z-10 px-3 py-3 font-bold text-indigo-700 font-mono border-r border-slate-200 whitespace-nowrap ${
+              index % 2 === 0 ? "bg-white" : "bg-slate-50"
+            }`}>
+              #{bill.billno || "N/A"}
+            </td>
+
+            {/* Date */}
+            <td className="px-3 py-3 text-slate-600 font-mono whitespace-nowrap border-r border-slate-200">
+              {formatDate(bill.einvoicedate)}
+            </td>
+
+            {/* Status */}
+            <td className="px-3 py-3 border-r border-slate-200 whitespace-nowrap">
+              <span className={`inline-flex items-center gap-1.5 font-bold text-[10px] uppercase ${
+                bill.status === "CANCELLED"
+                  ? "text-red-600"
+                  : bill.status === "PASSED"
+                  ? "text-emerald-600"
+                  : "text-amber-600"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  bill.status === "CANCELLED"
+                    ? "bg-red-500"
+                    : bill.status === "PASSED"
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                }`} />
+                {bill.status || "Processing"}
+              </span>
+            </td>
+
+            {/* Gross */}
+            <td className="px-3 py-3 text-right font-bold text-slate-800 font-mono tabular-nums whitespace-nowrap border-r border-slate-200">
+              ₹ {formatCurrency(getBillValue(bill, "totalamount"))}
+            </td>
+
+            {/* Net Collection */}
+            <td className="px-3 py-3 text-right font-bold text-emerald-600 font-mono tabular-nums whitespace-nowrap border-r border-slate-200">
+              ₹ {formatCurrency(getBillValue(bill, "netamount"))}
+            </td>
+
+            {/* Penalty */}
+            <td className="px-3 py-3 text-right font-semibold text-red-600 font-mono tabular-nums whitespace-nowrap border-r border-slate-200">
+              ₹ {formatCurrency(getBillValue(bill, "penalty"))}
+            </td>
+
+         
+
+            {/* Actions */}
+            {auth.user.role !== 3 && (
+              <td className="px-3 py-3">
+                <div className="flex justify-center items-center gap-2">
+
+                <Link
+                  to={`/dashboard/manager/editbill/${bill._id}`}
+                  className="p-2 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100"
+                >
+                  <FaEdit size={14} />
+                </Link>
+
+                <button
+                  onClick={() => handleDelete(bill._id)}
+                  className="p-2 rounded-md text-red-500 bg-red-50 hover:bg-red-100"
+                >
+                  <FaTrash size={13} />
+                </button>
+
               </div>
+            </td>
+            )}
+          </tr>
+        ))}
+
+        {filteredBills.length === 0 && (
+          <tr>
+            <td colSpan={8} className="py-12 text-center text-slate-400">
+              No bill records found
+            </td>
+          </tr>
+        )}
+      </tbody>
+
+      {/* Footer */}
+      {filteredBills.length > 0 && (
+        <tfoot>
+          <tr className="bg-slate-100 border-t-2 border-slate-300">
+            <td colSpan={8} className="px-3 py-3 text-right">
+              <span className="text-[10px] font-bold uppercase text-slate-500">
+                Total Records: {filteredBills.length}
+              </span>
+            </td>
+          </tr>
+        </tfoot>
+      )}
+
+    </table>
+  </div>
+
+  {/* Scroll Indicator */}
+  <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-slate-200">
+    <span className="text-[10px] text-slate-400">
+      {filteredBills.length} bill records
+    </span>
+    <span className="text-[10px] text-indigo-500 font-semibold flex items-center gap-1">
+      
+      Swipe horizontally
+    </span>
+  </div>
+
+</div>
+
+
             </>
           )}
         </main>
