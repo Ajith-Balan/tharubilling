@@ -79,7 +79,7 @@ const Users = () => {
 
       const data =
         res.data.Users ||
-        res.data.users ||
+        res.data.user ||
         res.data;
 
       setUsers(Array.isArray(data) ? data : []);
