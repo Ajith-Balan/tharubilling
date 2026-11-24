@@ -18,7 +18,6 @@ app.use('/api/v1/auth',auth)
 
 
 
-
 // app.get('/',(req,res)=>{
 //     res.send({message:'welcome to ecom app'})
 // })
