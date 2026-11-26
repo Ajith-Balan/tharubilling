@@ -550,6 +550,8 @@ exportContracts.forEach((contract) => {
       { width: 18 },  // Maximum Penalty
       { width: 18 },  // Actual Penalty
       { width: 14 },  // % Penalty
+      { width: 16 },  //  unbilled
+      { width: 16 },  // Actual Billed
       { width: 16 },  // Billed + unbilled
       { width: 16 },  // balance to be billed
    
@@ -579,6 +581,8 @@ exportContracts.forEach((contract) => {
       "Maximum Penalty",
       "Actual Penalty",
       "% Penalty",
+      "Unbilled",
+      "Actual Billed",
       "Billed + Unbilled",
       "Balance to be Billed",
       "Status",
@@ -697,8 +701,12 @@ exportContracts.forEach((contract) => {
         maximumPenalty,
         actualPenalty,
         penaltyPercentage,
-     Math.round(metrics.currentBillableValue).toLocaleString("en-IN"),
-     Math.round(metrics.balanceToBill).toLocaleString("en-IN"),
+   Math.round(metrics.currentBillableValue-metrics.actualBilledAmount),
+        Math.round(metrics.actualBilledAmount),
+
+     Math.round(metrics.currentBillableValue),
+
+     Math.round(metrics.balanceToBill),
 
    
         contract.status || "",
@@ -746,6 +754,12 @@ exportContracts.forEach((contract) => {
       row.getCell(13).numFmt = moneyFormat;
       row.getCell(15).numFmt = moneyFormat;
       row.getCell(16).numFmt = moneyFormat;
+
+            row.getCell(18).numFmt = moneyFormat;
+      row.getCell(19).numFmt = moneyFormat;
+      row.getCell(20).numFmt = moneyFormat;
+      row.getCell(21).numFmt = moneyFormat;
+
 
       // row.getCell(14).numFmt = "0%";
       row.getCell(17).numFmt = "0.00%";

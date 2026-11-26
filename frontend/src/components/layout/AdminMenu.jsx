@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/Auth";
 import { toast } from "react-toastify";
+import { FaArrowUpRightDots } from "react-icons/fa6";
 
 import {
   FaHome,
@@ -97,6 +98,25 @@ const ManagerMenu = () => {
           },
         ]
       : []),
+       {
+      to: "/dashboard/manager/penalty",
+      title: "Penalty Sheet",
+      label: "Penalty Sheet",
+      icon: <FaCheckCircle className="text-green-800" />,
+    },
+     {
+      to: "/dashboard/manager/summary",
+      title: "Summary",
+      label: (
+         <span className="flex w-full items-center justify-between gap-2">
+          <span>Pending Bills</span>
+          <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
+            Soon
+          </span>
+        </span>
+      ),
+      icon: <FaArrowUpRightDots  className="text-green-800" />, 
+    },
     {
       to: "/dashboard/manager/allsites",
       title: "Expenses (NEW)",
@@ -111,12 +131,7 @@ const ManagerMenu = () => {
       ),
       icon: <FaFileInvoiceDollar className="text-red-500" />,
     },
-    {
-      to: "/dashboard/manager/penalty",
-      title: "Penalty Sheet",
-      label: "Penalty Sheet",
-      icon: <FaCheckCircle className="text-green-800" />,
-    },
+   
        ...(role !== 3
       ? [
     {

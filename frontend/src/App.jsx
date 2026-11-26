@@ -40,6 +40,7 @@ import Dashboarduser from './pages/expenses/Dashboarduser';
 import Explogin from './pages/expenses/Explogin';
 import Users from './pages/manager/users';
 import States from './pages/expenses/States';
+import Summary from './pages/manager/Summary';
 // import Payslip from './pages/payslip';
 function App() {
   return (
@@ -76,6 +77,7 @@ function App() {
          <Route path='manager/createcontracts' element={<Addcontracts />} />
          <Route path='manager/contracts' element={<Contracts />} />
         <Route path='manager/billdetails' element={<BillHistory />} />
+        <Route path='manager/summary' element={<Summary />} />
         <Route path='manager/editbill/:id' element={<Editbill />} />
 
         <Route path='manager/users' element={<Users />} />

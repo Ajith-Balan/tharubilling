@@ -241,13 +241,13 @@ const Managerhome = () => {
             />
 
             <DashboardCard 
-              title="Sub Contractor" 
+              title="Pending Summary" 
               subtitle="Ledger & review"
               content="Coming Soon"
               icon={<FaFileInvoiceDollar className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" />}
               gradient="from-green-500/10 to-blue-500/5"
               borderColor="hover:border-green-500"
-              onClick={() => navigate("/dashboard/manager/subcontractors")} 
+              onClick={() => navigate("/dashboard/manager/summary")} 
             />
 
           </div>
